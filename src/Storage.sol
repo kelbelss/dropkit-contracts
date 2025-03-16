@@ -9,4 +9,5 @@ abstract contract Storage is Events, Errors {
     uint256 public creationPrice;
     uint256 public claimDeadline;
     uint256 public totalFees;
+    uint256 public nextDropID;
 }
