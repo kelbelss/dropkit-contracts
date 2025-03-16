@@ -5,8 +5,9 @@ libs = ["lib"]
 viaIR = true
 
 remappings = [
-    "@openzeppelin/contracts-upgradeable=lib/openzeppelin-contracts-upgradeable/contracts",
-    "@openzeppelin/contracts=lib/openzeppelin-contracts/contracts",
+    "openzeppelin/contracts-upgradeable=lib/openzeppelin-contracts-upgradeable/contracts",
+    "openzeppelin/contracts=lib/openzeppelin-contracts/contracts",
+    "solady=lib/solady/src",
 ]
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
