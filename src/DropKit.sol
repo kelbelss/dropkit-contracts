@@ -12,7 +12,7 @@ import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 contract DropKit is IDropKit, Storage, Ownable {
     using SafeTransferLib for address;
 
-    // will be imported soon
+    // will be imported soon?
     uint256 constant MAX_EARLY_EXIT_PENALTY_ALLOWED = 10000;
 
     constructor() Ownable(msg.sender) {}
@@ -40,18 +40,18 @@ contract DropKit is IDropKit, Storage, Ownable {
         bytes32 merkleRoot,
         uint256 totalAmount,
         uint256 earlyExitPenalty,
-        uint256 startDate,
-        uint256 vestingPeriod
+        uint256 startTimestamp,
+        uint256 vestingDuration
     ) public payable returns (uint256 dropID) {
         // assume the dropper is using their own token
 
         // maybe check if msg.value is MON?
 
         // Require payment for drop creation
-        require(msg.value >= creationPrice, InsufficientPayment());
+        require(msg.value == creationPrice, InsufficientPayment());
 
         // Check that the start date is in the future
-        require(startDate >= block.timestamp, InvalidStartDate());
+        require(startTimestamp >= block.timestamp, InvalidStartDate());
 
         // Check early exit penalty
         require(earlyExitPenalty >= minEarlyExitPenaltyAllowed, EarlyExitPenaltyTooLow());
@@ -63,29 +63,21 @@ contract DropKit is IDropKit, Storage, Ownable {
             merkleRoot: merkleRoot,
             totalAmount: totalAmount,
             earlyExitPenalty: earlyExitPenalty,
-            startDate: startDate,
-            vestingPeriod: vestingPeriod
+            startTimestamp: startTimestamp,
+            vestingDuration: vestingDuration
         });
 
         // drop ID settings
 
-        dropID = nextDropID;
+        dropID = ++dropCount;
         drops[dropID] = config;
         dropCreator[dropID] = msg.sender;
-        dropClaimedAmount[dropID] = 0;
-        nextDropID++;
 
-        totalFees += creationPrice;
-
-        // refund excess MON sent accidently
-        // if (msg.value > creationPrice) {
-        //     payable(msg.sender).transfer(msg.value - creationPrice);
-        // }
+        // transfer token to this contract
+        token.safeTransferFrom(msg.sender, address(this), totalAmount);
 
         // emit event
         emit DropCreated(dropID, token, totalAmount);
-
-        return dropID;
     }
 
     function withdrawUnclaimedTokens(uint256 _dropID) public {} // only after a year

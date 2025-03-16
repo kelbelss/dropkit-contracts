@@ -6,6 +6,6 @@ struct Config {
     bytes32 merkleRoot;
     uint256 totalAmount;
     uint256 earlyExitPenalty;
-    uint256 startDate;
-    uint256 vestingPeriod;
+    uint256 startTimestamp;
+    uint256 vestingDuration;
 }
