@@ -1,24 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.28;
 
-contract DropKit {
-    // Events, errors, constants files
+import {Storage} from "./Storage.sol";
 
-    // VARIABLES
-    uint256 public minEarlyExitPenaltyAllowed;
-    uint256 public creationPrice;
-    uint256 public claimDeadline;
-    uint256 public totalFees;
+import {Config} from "./Types.sol";
+import {IDropKit} from "./interfaces/IDropKit.sol";
 
-    struct Config {
-        address token;
-        bytes32 merkleRoot;
-        uint256 totalAmount;
-        uint256 minEarlyExitPenalty;
-        uint256 startDate;
-        uint256 vestingPeriod;
-    }
-
+contract DropKit is IDropKit, Storage {
     constructor() {}
 
     // ADMIN
