@@ -15,27 +15,22 @@ contract DropKit is IDropKit, Storage, Ownable {
     // will be imported soon
     uint256 constant MAX_EARLY_EXIT_PENALTY_ALLOWED = 10000;
 
-    // mappings
-    mapping(uint256 dropID => Config) public drops;
-    mapping(uint256 dropID => address) public dropCreator;
-    mapping(uint256 dropID => uint256) public dropClaimedAmount;
-
     constructor() Ownable(msg.sender) {}
 
     // ADMIN
-    function setMinEarlyExitPenaltyAllowed(uint256 newMinEarlyExitPenaltyAllowed) public {
+    function setMinEarlyExitPenaltyAllowed(uint256 newMinEarlyExitPenaltyAllowed) public onlyOwner {
         minEarlyExitPenaltyAllowed = newMinEarlyExitPenaltyAllowed;
     }
 
-    function setCreationPrice(uint256 newCreationPrice) public {
+    function setCreationPrice(uint256 newCreationPrice) public onlyOwner {
         creationPrice = newCreationPrice;
     }
 
-    function setClaimDeadline(uint256 newClaimDeadline) public {
+    function setClaimDeadline(uint256 newClaimDeadline) public onlyOwner {
         claimDeadline = newClaimDeadline;
     } // one year
 
-    function claimFees(address token) public payable {
+    function claimFees(address token) public payable onlyOwner {
         // MON - needs to account for creationFees and 10% penalty fees?
     }
 
