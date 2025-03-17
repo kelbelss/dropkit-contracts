@@ -7,8 +7,6 @@ import {IDropKit} from "./interfaces/IDropKit.sol";
 import {Ownable} from "openzeppelin/contracts/access/Ownable.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 
-// need constants?
-
 contract DropKit is IDropKit, Storage, Ownable {
     using SafeTransferLib for address;
 
@@ -57,6 +55,9 @@ contract DropKit is IDropKit, Storage, Ownable {
         require(earlyExitPenalty >= minEarlyExitPenaltyAllowed, EarlyExitPenaltyTooLow());
         require(earlyExitPenalty <= MAX_EARLY_EXIT_PENALTY_ALLOWED, EarlyExitPenaltyTooHigh());
 
+        // transfer token to this contract
+        token.safeTransferFrom(msg.sender, address(this), totalAmount);
+
         // create a new drop
         Config memory config = Config({
             token: token,
@@ -72,9 +73,6 @@ contract DropKit is IDropKit, Storage, Ownable {
         dropID = ++dropCount;
         drops[dropID] = config;
         dropCreator[dropID] = msg.sender;
-
-        // transfer token to this contract
-        token.safeTransferFrom(msg.sender, address(this), totalAmount);
 
         // emit event
         emit DropCreated(dropID, token, totalAmount, earlyExitPenalty, startTimestamp, vestingDuration);
