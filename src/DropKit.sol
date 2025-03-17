@@ -26,7 +26,7 @@ contract DropKit is IDropKit, Storage, Ownable {
     } // one year
 
     function claimFees(address token) public payable onlyOwner {
-        // MON - needs to account for creationFees and 10% penalty fees?
+        // TODO: MON - needs to account for creationFees and 10% penalty fees?
     }
 
     // DROPPER
@@ -40,7 +40,7 @@ contract DropKit is IDropKit, Storage, Ownable {
     ) public payable returns (uint256 dropID) {
         // assume the dropper is using their own token
 
-        // maybe check if msg.value is MON?
+        //TODO: maybe check if msg.value is MON?
 
         // Require payment for drop creation
         require(msg.value == creationPrice, InsufficientPayment());
@@ -66,7 +66,6 @@ contract DropKit is IDropKit, Storage, Ownable {
         });
 
         // drop ID settings
-
         dropID = ++dropCount;
         drops[dropID] = config;
         dropCreator[dropID] = msg.sender;
