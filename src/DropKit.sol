@@ -10,9 +10,6 @@ import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 contract DropKit is IDropKit, Storage, Ownable {
     using SafeTransferLib for address;
 
-    // will be imported soon?
-    uint256 constant MAX_EARLY_EXIT_PENALTY_ALLOWED = 10000;
-
     constructor() Ownable(msg.sender) {}
 
     // ADMIN
