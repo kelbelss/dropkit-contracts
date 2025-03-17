@@ -3,4 +3,9 @@ pragma solidity 0.8.28;
 
 abstract contract Errors {
     error TestError();
+    error InsufficientPayment();
+    error InvalidStartDate();
+    error EarlyExitPenaltyTooLow();
+    error EarlyExitPenaltyTooHigh();
+    error FeeNotTransferred();
 }
