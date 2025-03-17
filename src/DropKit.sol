@@ -77,7 +77,31 @@ contract DropKit is IDropKit, Storage, Ownable {
     function withdrawUnclaimedTokens(uint256 _dropID) public {} // only after a year
 
     // RECIPIENT
-    function claimAirdrop(uint256 _dropID, bytes32[] memory merkleProof) public {}
+    function claimAirdrop(uint256 dropID, uint256 amount, bytes32[] memory merkleProof) public {
+        Config memory config = drops[dropID];
+
+        // Check if the drop is still active
+        require(block.timestamp < config.startTimestamp + claimDeadline, DropExpired());
+
+        // Check if the recipient has already claimed
+        // TODO: what would this be if other tokens are vested?
+        require(dropClaimedAmount[dropID] == 0, AlreadyClaimed());
+
+        // Check if the recipient is in the merkle tree
+        // TODO:
+        // bytes32 leaf = keccak256(abi.encodePacked(msg.sender, amount));
+        // require(merkleProof.verify(leaf, amount), NotEligibleForAirdrop());
+
+        // transfer tokens to the recipient
+        // TODO: remove penalty amount
+        config.token.safeTransfer(msg.sender, amount);
+
+        // update the claimed amount mapping
+        dropClaimedAmount[dropID] = amount;
+
+        emit DropClaimed(dropID, config.token, msg.sender, amount);
+    }
+
     function startVesting(uint256 _dropID, address recipient, uint256 amount, bytes32[] memory merkleProof) public {}
     function withdrawVestedTokens(uint256 _dropID) public {}
 }

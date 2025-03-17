@@ -11,4 +11,5 @@ abstract contract Events {
         uint256 startTimestamp,
         uint256 vestingDuration
     );
+    event DropClaimed(uint256 indexed dropID, address indexed token, address indexed recipient, uint256 amount);
 }
