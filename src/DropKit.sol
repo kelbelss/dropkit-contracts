@@ -77,7 +77,7 @@ contract DropKit is IDropKit, Storage, Ownable {
         token.safeTransferFrom(msg.sender, address(this), totalAmount);
 
         // emit event
-        emit DropCreated(dropID, token, totalAmount);
+        emit DropCreated(dropID, token, totalAmount, earlyExitPenalty, startTimestamp, vestingDuration);
     }
 
     function withdrawUnclaimedTokens(uint256 _dropID) public {} // only after a year
