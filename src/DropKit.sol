@@ -89,7 +89,6 @@ contract DropKit is IDropKit, Storage, Ownable {
         require(block.timestamp < config.startTimestamp + claimDeadline, DropExpired());
 
         // Check if the recipient has already claimed
-        // TODO: what would this be if other tokens are vested?
         require(!hasClaimed[dropID][msg.sender], AlreadyClaimed());
 
         // Check if the recipient is in the merkle tree
@@ -108,6 +107,23 @@ contract DropKit is IDropKit, Storage, Ownable {
         config.token.safeTransfer(msg.sender, amount);
 
         emit DropClaimed(dropID, config.token, msg.sender, amount);
+    }
+
+    // TODO: track each recipients amount??
+    // TODO: change hasClaimed mapping to a uint256 because claiming can be done in chunks, change require too
+    // TODO: add function for tokens left calculation
+    // TODO: calculate penalty for early exit with vested time considered
+
+    function calculatePenalty(uint256 userAmount) external pure returns (uint256 penalty) {
+        Config memory config = drops[dropID];
+
+        // needs if/else - chkeck if vestingPeriod has passed
+
+        uint256 vestedPeriod = (block.timestamp - config.startTimestamp) / config.vestingDuration;
+        uint256 quickMaf = userAmount * vestedPeriod;
+
+        // ERC4626
+        // fix 20% penalty on amount remianing when user exits early
     }
 
     function startVesting(uint256 _dropID, address recipient, uint256 amount, bytes32[] memory merkleProof) public {}
