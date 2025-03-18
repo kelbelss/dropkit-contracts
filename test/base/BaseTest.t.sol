@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.28;
 
-import {Test, console} from "forge-std/Test.sol";
+import "forge-std/Test.sol";
 import {Merkle} from "murky/Merkle.sol";
 import {DropKit} from "src/DropKit.sol";
 import {Storage, Config} from "src/Storage.sol";
@@ -52,6 +52,8 @@ contract BaseTest is Test {
         hashedMerkleItems[0] = keccak256(abi.encodePacked(ALICE, aliceAmount));
         hashedMerkleItems[1] = keccak256(abi.encodePacked(BOB, bobAmount));
         hashedMerkleItems[2] = keccak256(abi.encodePacked(CHAD, chadAmount));
+
+        console.log("Leaf for ALICE:", hashedMerkleItems[0]);
     }
 
     function _buildMerkleRootFromHashedMerkleItems() internal {

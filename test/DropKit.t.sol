@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.28;
 
+import "forge-std/Test.sol";
+
 import {BaseTest} from "./base/BaseTest.t.sol";
 import {DropKit} from "../src/DropKit.sol";
 import {Storage, Config} from "../src/Storage.sol";
@@ -41,5 +43,33 @@ contract TestDropKit is BaseTest {
         assertEq(duration, 30 days);
 
         assertEq(mockToken.balanceOf(address(dropKit)), totalDropAmount);
+    }
+
+    function test_DropKit_claimAirdrop() public {
+        // Create a drop
+        vm.startPrank(DROP_CREATOR);
+        // Approve dropkit contract to transfer creator tokens
+        mockToken.approve(address(dropKit), totalDropAmount);
+        dropID = dropKit.createDrop{value: 2 ether}(
+            address(mockToken), merkleRoot, totalDropAmount, 10, defaultStartTime, 30 days
+        );
+        vm.stopPrank();
+        vm.warp(defaultStartTime);
+
+        // Claim airdrop and pull merkleProof
+        vm.prank(ALICE);
+
+        bytes32[] memory proof = getMerkleProof(ALICE, aliceAmount);
+
+        dropKit.claimAirdrop(dropID, aliceAmount, proof);
+        vm.stopPrank();
+
+        console2.log("ALICE: ", ALICE.balance);
+        // console.log("Proof", proof);
+        // console.log("Root", merkleRoot);
+        // console.log("actual proof", verifyMerkleProof(ALICE, aliceAmount, proof));
+
+        assertEq(mockToken.balanceOf(ALICE), aliceAmount);
+        assertEq(mockToken.balanceOf(address(dropKit)), totalDropAmount - aliceAmount);
     }
 }

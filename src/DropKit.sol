@@ -81,6 +81,8 @@ contract DropKit is IDropKit, Storage, Ownable {
     function claimAirdrop(uint256 dropID, uint256 amount, bytes32[] memory merkleProof) public {
         Config memory config = drops[dropID];
 
+        // TODO: who is allowed to claim this? only msg.sender?
+
         // Check if the drop is active
         require(block.timestamp >= config.startTimestamp, AirdropNotStarted());
         require(block.timestamp < config.startTimestamp + claimDeadline, DropExpired());
