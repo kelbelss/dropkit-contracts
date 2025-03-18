@@ -103,28 +103,43 @@ contract DropKit is IDropKit, Storage, Ownable {
         hasClaimed[dropID][msg.sender] = true;
 
         // transfer tokens to the recipient
-        // TODO: remove penalty amount
+        // TODO: calculate penalty amount and add to this function
         config.token.safeTransfer(msg.sender, amount);
 
         emit DropClaimed(dropID, config.token, msg.sender, amount);
     }
 
-    // TODO: track each recipients amount??
-    // TODO: change hasClaimed mapping to a uint256 because claiming can be done in chunks, change require too
-    // TODO: add function for tokens left calculation
-    // TODO: calculate penalty for early exit with vested time considered
+    // TODO: track each recipients amount? UsersAllocation function and mapping?
+    // TODO: add a mapping to keep track of funds a user has already claimed
 
     function calculatePenalty(uint256 userAmount) external pure returns (uint256 penalty) {
         Config memory config = drops[dropID];
 
-        // needs if/else - chkeck if vestingPeriod has passed
+        // needs if/else - chkeck if vestingPeriod has passed first
 
-        uint256 vestedPeriod = (block.timestamp - config.startTimestamp) / config.vestingDuration;
-        uint256 quickMaf = userAmount * vestedPeriod;
+        // uint256 vestedPeriod = (block.timestamp - config.startTimestamp) / config.vestingDuration;
+        uint256 vestPeriod = config.startTimestamp + config.vestingDuration;
 
-        // ERC4626
-        // fix 20% penalty on amount remianing when user exits early
+        if (block.timestamp > vestPeriod) {
+            // fully vested - no penalty applies;
+            return 0;
+        }
+        // partially vested - calculate penalty 20% of unvested tokens
+        uint256 timeSinceStart = block.timestamp - config.startTimestamp;
+
+        uint256 unvestedPortion = (config.vestingDuration - timeElapsed) * SCALE / config.vestingDuration;
+
+        // Calculate the unvested amount
+        uint256 unvestedAmount = (userAmount * unvestedPortion) / SCALE;
+
+        // applies to claiming all tokens when some are still unvested
+        penalty = (unvestedAmount * config.earlyExitPenalty) / 100;
+
+        // TODO: Edits need to be done when calculateVestedAmount and userAllocation functions are added
     }
+
+    // TODO: We need a calculateVestedAmount function to manage calculations
+    // TODO: We need a UsersAllocation function to manage user funds and calculations
 
     function startVesting(uint256 _dropID, address recipient, uint256 amount, bytes32[] memory merkleProof) public {}
     function withdrawVestedTokens(uint256 _dropID) public {}
