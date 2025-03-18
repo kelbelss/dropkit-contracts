@@ -8,6 +8,7 @@ abstract contract Errors {
     error EarlyExitPenaltyTooLow();
     error EarlyExitPenaltyTooHigh();
     error FeeNotTransferred();
+    error AirdropNotStarted();
     error DropExpired();
     error AlreadyClaimed();
     error NotEligibleForAirdrop();

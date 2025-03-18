@@ -6,6 +6,7 @@ import {Config} from "./Types.sol";
 import {IDropKit} from "./interfaces/IDropKit.sol";
 import {Ownable} from "openzeppelin/contracts/access/Ownable.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
+import {MerkleProofLib} from "solady/utils/MerkleProofLib.sol";
 
 contract DropKit is IDropKit, Storage, Ownable {
     using SafeTransferLib for address;
@@ -80,24 +81,29 @@ contract DropKit is IDropKit, Storage, Ownable {
     function claimAirdrop(uint256 dropID, uint256 amount, bytes32[] memory merkleProof) public {
         Config memory config = drops[dropID];
 
-        // Check if the drop is still active
+        // Check if the drop is active
+        require(block.timestamp >= config.startTimestamp, AirdropNotStarted());
         require(block.timestamp < config.startTimestamp + claimDeadline, DropExpired());
 
         // Check if the recipient has already claimed
         // TODO: what would this be if other tokens are vested?
-        require(dropClaimedAmount[dropID] == 0, AlreadyClaimed());
+        require(!hasClaimed[dropID][msg.sender], AlreadyClaimed());
+
+        // Check if amount is correct
 
         // Check if the recipient is in the merkle tree
         // TODO:
-        // bytes32 leaf = keccak256(abi.encodePacked(msg.sender, amount));
-        // require(merkleProof.verify(leaf, amount), NotEligibleForAirdrop());
+        bytes32 leaf = keccak256(abi.encodePacked(msg.sender, amount));
+        require(MerkleProofLib.verify(merkleProof, config.merkleRoot, leaf), NotEligibleForAirdrop());
 
         // transfer tokens to the recipient
         // TODO: remove penalty amount
         config.token.safeTransfer(msg.sender, amount);
 
-        // update the claimed amount mapping
-        dropClaimedAmount[dropID] = amount;
+        // update the claimed amount mapping and claimed status
+        dropClaimedAmount[dropID] += amount;
+
+        hasClaimed[dropID][msg.sender] = true;
 
         emit DropClaimed(dropID, config.token, msg.sender, amount);
     }
