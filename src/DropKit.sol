@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.28;
 
+import {Test, console} from "forge-std/Test.sol";
 import {Storage} from "./Storage.sol";
 import {Config} from "./Types.sol";
 import {IDropKit} from "./interfaces/IDropKit.sol";
@@ -91,11 +92,10 @@ contract DropKit is IDropKit, Storage, Ownable {
         // TODO: what would this be if other tokens are vested?
         require(!hasClaimed[dropID][msg.sender], AlreadyClaimed());
 
-        // Check if amount is correct
-
         // Check if the recipient is in the merkle tree
         // TODO:
         bytes32 leaf = keccak256(abi.encodePacked(msg.sender, amount));
+
         require(MerkleProofLib.verify(merkleProof, config.merkleRoot, leaf), NotEligibleForAirdrop());
 
         // transfer tokens to the recipient
