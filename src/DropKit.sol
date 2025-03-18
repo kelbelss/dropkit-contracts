@@ -98,14 +98,14 @@ contract DropKit is IDropKit, Storage, Ownable {
 
         require(MerkleProofLib.verify(merkleProof, config.merkleRoot, leaf), NotEligibleForAirdrop());
 
-        // transfer tokens to the recipient
-        // TODO: remove penalty amount
-        config.token.safeTransfer(msg.sender, amount);
-
         // update the claimed amount mapping and claimed status
         dropClaimedAmount[dropID] += amount;
 
         hasClaimed[dropID][msg.sender] = true;
+
+        // transfer tokens to the recipient
+        // TODO: remove penalty amount
+        config.token.safeTransfer(msg.sender, amount);
 
         emit DropClaimed(dropID, config.token, msg.sender, amount);
     }
