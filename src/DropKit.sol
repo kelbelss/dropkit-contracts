@@ -121,10 +121,8 @@ contract DropKit is IDropKit, Storage, Ownable {
         if (amountToWithdraw == recipentsFullAmount) {
             recipient.hasWithdrawnFullDrop = true;
             recipient.totalAmountRemaining -= amountToWithdraw;
-            recipient.totalAmountWithdrawn += amountToWithdraw;
         } else if (amountToWithdraw < recipient.totalAmountRemaining) {
             recipient.totalAmountRemaining -= amountToWithdraw;
-            recipient.totalAmountWithdrawn += amountToWithdraw;
         }
 
         // transfer tokens to the recipient

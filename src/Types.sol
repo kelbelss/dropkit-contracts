@@ -12,7 +12,6 @@ struct Config {
 
 struct Recipient {
     uint256 totalAmountDropped;
-    uint256 totalAmountWithdrawn;
     uint256 totalAmountRemaining;
     bool hasActivatedDrop;
     bool hasWithdrawnFullDrop;
