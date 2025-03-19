@@ -10,6 +10,9 @@ abstract contract Errors {
     error FeeNotTransferred();
     error AirdropNotStarted();
     error DropExpired();
-    error AlreadyClaimed();
+    error AlreadyActivated();
     error NotEligibleForAirdrop();
+    error NotActivated();
+    error AlreadyWithdrawn();
+    error InsufficientFunds();
 }

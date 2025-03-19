@@ -79,68 +79,100 @@ contract DropKit is IDropKit, Storage, Ownable {
     function withdrawUnclaimedTokens(uint256 _dropID) public {} // only after a year
 
     // RECIPIENT
-    function claimAirdrop(uint256 dropID, uint256 amount, bytes32[] memory merkleProof) public {
+    function activateAirdrop(uint256 dropID, uint256 amount, bytes32[] memory merkleProof) public {
         Config memory config = drops[dropID];
-
-        // TODO: who is allowed to claim this? only msg.sender?
 
         // Check if the drop is active
         require(block.timestamp >= config.startTimestamp, AirdropNotStarted());
         require(block.timestamp < config.startTimestamp + claimDeadline, DropExpired());
 
         // Check if the recipient has already claimed
-        require(!hasClaimed[dropID][msg.sender], AlreadyClaimed());
+        require(!hasActivatedDrop[dropID][msg.sender], AlreadyActived());
 
         // Check if the recipient is in the merkle tree
-        // TODO:
         bytes32 leaf = keccak256(abi.encodePacked(msg.sender, amount));
-
         require(MerkleProofLib.verify(merkleProof, config.merkleRoot, leaf), NotEligibleForAirdrop());
 
-        // update the claimed amount mapping and claimed status
-        dropClaimedAmount[dropID] += amount;
+        // update the activated status and amount mapping
+        hasActivatedDrop[dropID][msg.sender] = true;
+        recipientDropAmount[dropID][msg.sender] += amount;
 
-        hasClaimed[dropID][msg.sender] = true;
-
-        // transfer tokens to the recipient
-        // TODO: calculate penalty amount and add to this function
-        config.token.safeTransfer(msg.sender, amount);
-
-        emit DropClaimed(dropID, config.token, msg.sender, amount);
+        emit DropActivated(dropID, config.token, msg.sender, amount);
     }
 
-    // TODO: track each recipients amount? UsersAllocation function and mapping?
-    // TODO: add a mapping to keep track of funds a user has already claimed
-
-    function calculatePenalty(uint256 userAmount) external pure returns (uint256 penalty) {
+    function withdrawAirdropTokens(uint256 dropID, uint256 amountToWithdraw) public {
+        // TODO: calculate penalty amount and add to this function
         Config memory config = drops[dropID];
 
-        // needs if/else - chkeck if vestingPeriod has passed first
+        // Check if the recipient has not activated or already withdrawn
+        require(hasActivatedDrop[dropID][msg.sender], NotActivated());
+        require(!hasWithdrawnFullDrop[dropID][msg.sender], AlreadyWithdrawn());
 
-        // uint256 vestedPeriod = (block.timestamp - config.startTimestamp) / config.vestingDuration;
-        uint256 vestPeriod = config.startTimestamp + config.vestingDuration;
+        uint256 recipentsFullAmount = recipientDropAmount[dropID][msg.sender];
 
-        if (block.timestamp > vestPeriod) {
-            // fully vested - no penalty applies;
-            return 0;
+        // Check if the recipient has enough funds owed
+        require(amountToWithdraw <= recipentsFullAmount, InsufficientFunds());
+
+        if (amountToWithdraw == recipentsFullAmount) {
+            recipientDropAmount[dropID][msg.sender] -= amountToWithdraw;
+            hasWithdrawnFullDrop[dropID][msg.sender] = true;
+        } else if (amountToWithdraw < recipentsFullAmount) {
+            recipientDropAmount[dropID][msg.sender] -= amountToWithdraw;
         }
-        // partially vested - calculate penalty 20% of unvested tokens
-        uint256 timeSinceStart = block.timestamp - config.startTimestamp;
 
-        uint256 unvestedPortion = (config.vestingDuration - timeElapsed) * SCALE / config.vestingDuration;
-
-        // Calculate the unvested amount
-        uint256 unvestedAmount = (userAmount * unvestedPortion) / SCALE;
-
-        // applies to claiming all tokens when some are still unvested
-        penalty = (unvestedAmount * config.earlyExitPenalty) / 100;
-
-        // TODO: Edits need to be done when calculateVestedAmount and userAllocation functions are added
+        // transfer tokens to the recipient
+        config.token.safeTransfer(msg.sender, amountToWithdraw);
     }
 
-    // TODO: We need a calculateVestedAmount function to manage calculations
-    // TODO: We need a UsersAllocation function to manage user funds and calculations
+    // scenarios: 1. fully vested - no penalty applies; 2. partially vested - calculate penalty 20% of unvested tokens being withdrawn
+
+    function calculatePenalty(uint256 amountToWithdraw) external view returns (uint256 penalty) {
+        Config memory config = drops[dropID];
+
+        uint256 userAmount = recipientDropAmount[dropID][msg.sender];
+        uint256 vestedAmount = calculateVestedAmount(userAmount);
+
+        // if recipient is withdrawing less than/equal to vested amount, no penalty
+        if (amountToWithdraw <= vestedAmount) {
+            return 0;
+        }
+
+        // if recipient is withdrawing more than vested amount
+        uint256 unvestedWithdrawalAmount = amountToWithdraw - vestedAmount;
+
+        // applies to claiming tokens when some are still unvested
+        penalty = (unvestedWithdrawalAmount * config.earlyExitPenalty) / 100;
+    }
+
+    function calculateVestedAmount(uint256 userAmount) external view returns (uint256 vestedAmount) {
+        Config memory config = drops[dropID];
+
+        uint256 vestPeriod = config.startTimestamp + config.vestingDuration;
+
+        // fully vested - no penalty applies
+        if (block.timestamp > vestPeriod) {
+            return userAmount;
+        }
+
+        // partially vested - time since the start
+        uint256 timeSinceStart = block.timestamp - config.startTimestamp;
+
+        // percentage calculation for vested portion
+        uint256 vestedPortion = (timeSinceStart * SCALE) / config.vestingDuration;
+
+        // make sure the vested portion doesn't go over 100%
+        if (vestedPortion > SCALE) {
+            vestedPortion = SCALE;
+        }
+
+        // calculate the vested amount with percentage
+        uint256 vestedAmount = (userAmount * vestedPortion) / SCALE;
+    }
 
     function startVesting(uint256 _dropID, address recipient, uint256 amount, bytes32[] memory merkleProof) public {}
     function withdrawVestedTokens(uint256 _dropID) public {}
+
+    function getUsersAllocation(uint256 _dropID, address recipient, uint256 amount) private view returns (uint256) {
+        recipientDropAmount[_dropID][recipient] = amount;
+    }
 }
