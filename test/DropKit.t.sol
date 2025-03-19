@@ -26,7 +26,7 @@ contract TestDropKit is BaseTest {
 
         // Create a drop
         dropID = dropKit.createDrop{value: 2 ether}(
-            address(mockToken), merkleRoot, totalDropAmount, 10, defaultStartTime, 30 days
+            address(mockToken), merkleRoot, totalDropAmount, 2e17, defaultStartTime, 30 days
         );
 
         vm.stopPrank();
@@ -38,35 +38,78 @@ contract TestDropKit is BaseTest {
         assertEq(token, address(mockToken));
         assertEq(root, merkleRoot);
         assertEq(total, totalDropAmount);
-        assertEq(penalty, 10);
+        assertEq(penalty, 2e17);
         assertEq(start, defaultStartTime);
         assertEq(duration, 30 days);
 
         assertEq(mockToken.balanceOf(address(dropKit)), totalDropAmount);
     }
 
-    function test_DropKit_claimAirdrop() public {
+    function test_DropKit_activateAirdrop() public {
         // Create a drop
         vm.startPrank(DROP_CREATOR);
         // Approve dropkit contract to transfer creator tokens
         mockToken.approve(address(dropKit), totalDropAmount);
         dropID = dropKit.createDrop{value: 2 ether}(
-            address(mockToken), merkleRoot, totalDropAmount, 10, defaultStartTime, 30 days
+            address(mockToken), merkleRoot, totalDropAmount, 2e17, defaultStartTime, 30 days
         );
         vm.stopPrank();
         vm.warp(defaultStartTime);
 
-        // Claim airdrop and pull merkleProof
+        // pull merkleProof
         vm.startPrank(BOB);
-
         bytes32[] memory proof = getMerkleProof(address(BOB), bobAmount);
 
-        dropKit.claimAirdrop(dropID, bobAmount, proof);
+        // activate drop
+        dropKit.activateAirdrop(dropID, bobAmount, proof);
         vm.stopPrank();
 
-        // console.log("ALICE: ", address(ALICE).balance);
+        // Check recipient details are set
+        (uint256 totalAmountDropped, uint256 totalAmountRemaining, bool hasActivatedDrop, bool hasWithdrawnFullDrop) =
+            dropKit.recipients(address(BOB));
 
-        assertEq(mockToken.balanceOf(address(BOB)), bobAmount);
-        assertEq(mockToken.balanceOf(address(dropKit)), totalDropAmount - bobAmount);
+        assertEq(totalAmountDropped, bobAmount);
+        assertEq(totalAmountRemaining, bobAmount);
+        assertEq(hasActivatedDrop, true);
+        assertEq(hasWithdrawnFullDrop, false);
+    }
+
+    function test_DropKit_withdrawAirdropTokens() public {
+        // Create a drop
+        vm.startPrank(DROP_CREATOR);
+        // Approve dropkit contract to transfer creator tokens
+        mockToken.approve(address(dropKit), totalDropAmount);
+        dropID = dropKit.createDrop{value: 2 ether}(
+            address(mockToken), merkleRoot, totalDropAmount, 2e17, defaultStartTime, 100 days
+        );
+        vm.stopPrank();
+        vm.warp(defaultStartTime);
+
+        // pull merkleProof
+        vm.startPrank(BOB);
+        bytes32[] memory proof = getMerkleProof(address(BOB), bobAmount);
+
+        // activate drop
+        dropKit.activateAirdrop(dropID, bobAmount, proof);
+        // vm.stopPrank();
+
+        vm.warp(defaultStartTime + 80 days);
+        // total is 1000e18, bob has 300e18
+
+        // withdraw airdrop tokens
+        dropKit.withdrawAirdropTokens(dropID, bobAmount);
+
+        vm.stopPrank();
+
+        // Check recipient details
+        (uint256 totalAmountDropped, uint256 totalAmountRemaining, bool hasActivatedDrop, bool hasWithdrawnFullDrop) =
+            dropKit.recipients(address(BOB));
+
+        assertEq(totalAmountDropped, bobAmount);
+        assertEq(totalAmountRemaining, 0);
+        console.log("Bob's balance is: ", mockToken.balanceOf(address(BOB)));
+        assertEq(hasActivatedDrop, true);
+        assertEq(hasWithdrawnFullDrop, true);
+        console.log("dropkit balance", mockToken.balanceOf(address(dropKit)));
     }
 }
