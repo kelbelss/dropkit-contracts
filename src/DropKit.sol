@@ -118,21 +118,22 @@ contract DropKit is IDropKit, Storage, Ownable {
         // Check if the recipient has enough funds owed
         require(amountToWithdraw <= recipientsAmountRemaining, InsufficientFunds());
 
-        if (amountToWithdraw == recipientsAmountRemaining) {
+        uint256 withdrawalAmount = handleWithdrawals(dropID, amountToWithdraw);
+
+        if (withdrawalAmount == recipient.totalAmountRemaining) {
             recipient.hasWithdrawnFullDrop = true;
-            recipient.totalAmountRemaining -= amountToWithdraw;
+            recipient.totalAmountRemaining -= withdrawalAmount;
         } else {
-            recipient.totalAmountRemaining -= amountToWithdraw;
+            recipient.totalAmountRemaining -= withdrawalAmount;
         }
 
         // transfer tokens to the recipient
-        config.token.safeTransfer(msg.sender, amountToWithdraw);
+        config.token.safeTransfer(msg.sender, withdrawalAmount);
 
         emit AirdropTokensWithdrawn(dropID, msg.sender, amountToWithdraw);
     }
 
-    function handleWithdrawals(uint256 dropID, uint256 amountToWithdraw) internal view returns (uint256 withdrawalAmount) {
-        Config memory config = drops[dropID];
+    function handleWithdrawals(uint256 dropID, uint256 amountToWithdraw) internal returns (uint256 withdrawalAmount) {
         Recipient storage recipient = recipients[msg.sender];
 
         uint256 userAmount = recipient.totalAmountDropped;
@@ -154,10 +155,12 @@ contract DropKit is IDropKit, Storage, Ownable {
 
         uint256 penalty = getPenalty(dropID, unvestedWithdrawalAmount);
 
+        recipient.totalAmountRemaining -= penalty;
+
         withdrawalAmount = vestedBalanceAvailable + unvestedWithdrawalAmount - penalty;
     }
 
-    function getPenalty(uint256 dropID, uint256 amountToWithdraw) internal view returns (uint256 penalty) {
+    function getPenalty(uint256 dropID, uint256 unvestedWithdrawalAmount) internal view returns (uint256 penalty) {
         Config memory config = drops[dropID];
 
         // applies to claiming tokens when some are still unvested
@@ -194,4 +197,7 @@ contract DropKit is IDropKit, Storage, Ownable {
         // partially vested - time since the start
         vestedTime = block.timestamp - config.startTimestamp;
     }
+
+    // TODO: track balances
+    // TODO: add ID to recipient struct
 }
