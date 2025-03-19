@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {Events} from "./Events.sol";
 import {Errors} from "./Errors.sol";
-import {Config} from "./Types.sol";
+import {Config, Recipient} from "./Types.sol";
 import {Constants} from "./Constants.sol";
 
 abstract contract Storage is Events, Errors, Constants {
@@ -16,7 +16,5 @@ abstract contract Storage is Events, Errors, Constants {
     // mappings
     mapping(uint256 dropID => Config) public drops;
     mapping(uint256 dropID => address) public dropCreator;
-    mapping(uint256 dropID => mapping(address => uint256)) public recipientDropAmount;
-    mapping(uint256 dropID => mapping(address => bool)) public hasActivatedDrop;
-    mapping(uint256 dropID => mapping(address => bool)) public hasWithdrawnFullDrop;
+    mapping(address recipient => Recipient) public recipients;
 }

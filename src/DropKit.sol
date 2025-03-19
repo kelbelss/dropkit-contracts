@@ -3,7 +3,7 @@ pragma solidity 0.8.28;
 
 import {Test, console} from "forge-std/Test.sol";
 import {Storage} from "./Storage.sol";
-import {Config} from "./Types.sol";
+import {Config, Recipient} from "./Types.sol";
 import {IDropKit} from "./interfaces/IDropKit.sol";
 import {Ownable} from "openzeppelin/contracts/access/Ownable.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
@@ -81,21 +81,24 @@ contract DropKit is IDropKit, Storage, Ownable {
     // RECIPIENT
     function activateAirdrop(uint256 dropID, uint256 amount, bytes32[] memory merkleProof) public {
         Config memory config = drops[dropID];
+        // storage for changing state?
+        Recipient storage recipient = recipients[msg.sender];
 
         // Check if the drop is active
         require(block.timestamp >= config.startTimestamp, AirdropNotStarted());
         require(block.timestamp < config.startTimestamp + claimDeadline, DropExpired());
 
         // Check if the recipient has already claimed
-        require(!hasActivatedDrop[dropID][msg.sender], AlreadyActived());
+        require(!recipient.hasActivatedDrop, AlreadyActivated());
 
         // Check if the recipient is in the merkle tree
         bytes32 leaf = keccak256(abi.encodePacked(msg.sender, amount));
         require(MerkleProofLib.verify(merkleProof, config.merkleRoot, leaf), NotEligibleForAirdrop());
 
         // update the activated status and amount mapping
-        hasActivatedDrop[dropID][msg.sender] = true;
-        recipientDropAmount[dropID][msg.sender] += amount;
+        recipient.hasActivatedDrop = true;
+        recipient.totalAmountDropped += amount;
+        recipient.totalAmountRemaining += amount;
 
         emit DropActivated(dropID, config.token, msg.sender, amount);
     }
@@ -103,21 +106,25 @@ contract DropKit is IDropKit, Storage, Ownable {
     function withdrawAirdropTokens(uint256 dropID, uint256 amountToWithdraw) public {
         // TODO: calculate penalty amount and add to this function
         Config memory config = drops[dropID];
+        // storage for changing state? TODO: who is calling this function if its internal?
+        Recipient storage recipient = recipients[msg.sender];
 
         // Check if the recipient has not activated or already withdrawn
-        require(hasActivatedDrop[dropID][msg.sender], NotActivated());
-        require(!hasWithdrawnFullDrop[dropID][msg.sender], AlreadyWithdrawn());
+        require(recipient.hasActivatedDrop, NotActivated());
+        require(!recipient.hasWithdrawnFullDrop, AlreadyWithdrawn());
 
-        uint256 recipentsFullAmount = recipientDropAmount[dropID][msg.sender];
+        uint256 recipentsFullAmount = recipient.totalAmountDropped;
 
         // Check if the recipient has enough funds owed
         require(amountToWithdraw <= recipentsFullAmount, InsufficientFunds());
 
         if (amountToWithdraw == recipentsFullAmount) {
-            recipientDropAmount[dropID][msg.sender] -= amountToWithdraw;
-            hasWithdrawnFullDrop[dropID][msg.sender] = true;
-        } else if (amountToWithdraw < recipentsFullAmount) {
-            recipientDropAmount[dropID][msg.sender] -= amountToWithdraw;
+            recipient.hasWithdrawnFullDrop = true;
+            recipient.totalAmountRemaining -= amountToWithdraw;
+            recipient.totalAmountWithdrawn += amountToWithdraw;
+        } else if (amountToWithdraw < recipient.totalAmountRemaining) {
+            recipient.totalAmountRemaining -= amountToWithdraw;
+            recipient.totalAmountWithdrawn += amountToWithdraw;
         }
 
         // transfer tokens to the recipient
@@ -126,11 +133,13 @@ contract DropKit is IDropKit, Storage, Ownable {
 
     // scenarios: 1. fully vested - no penalty applies; 2. partially vested - calculate penalty 20% of unvested tokens being withdrawn
 
-    function calculatePenalty(uint256 amountToWithdraw) external view returns (uint256 penalty) {
+    function getPenalty(uint256 dropID, uint256 amountToWithdraw) internal view returns (uint256 penalty) {
         Config memory config = drops[dropID];
+        // storage for changing state? TODO: who is calling this function if its internal?
+        Recipient storage recipient = recipients[msg.sender];
 
-        uint256 userAmount = recipientDropAmount[dropID][msg.sender];
-        uint256 vestedAmount = calculateVestedAmount(userAmount);
+        uint256 userAmount = recipient.totalAmountDropped;
+        uint256 vestedAmount = getVestedAmount(dropID, userAmount);
 
         // if recipient is withdrawing less than/equal to vested amount, no penalty
         if (amountToWithdraw <= vestedAmount) {
@@ -141,10 +150,10 @@ contract DropKit is IDropKit, Storage, Ownable {
         uint256 unvestedWithdrawalAmount = amountToWithdraw - vestedAmount;
 
         // applies to claiming tokens when some are still unvested
-        penalty = (unvestedWithdrawalAmount * config.earlyExitPenalty) / 100;
+        penalty = (unvestedWithdrawalAmount * config.earlyExitPenalty) / SCALE;
     }
 
-    function calculateVestedAmount(uint256 userAmount) external view returns (uint256 vestedAmount) {
+    function getVestedAmount(uint256 dropID, uint256 userAmount) internal view returns (uint256 vestedAmount) {
         Config memory config = drops[dropID];
 
         uint256 vestPeriod = config.startTimestamp + config.vestingDuration;
@@ -166,13 +175,6 @@ contract DropKit is IDropKit, Storage, Ownable {
         }
 
         // calculate the vested amount with percentage
-        uint256 vestedAmount = (userAmount * vestedPortion) / SCALE;
-    }
-
-    function startVesting(uint256 _dropID, address recipient, uint256 amount, bytes32[] memory merkleProof) public {}
-    function withdrawVestedTokens(uint256 _dropID) public {}
-
-    function getUsersAllocation(uint256 _dropID, address recipient, uint256 amount) private view returns (uint256) {
-        recipientDropAmount[_dropID][recipient] = amount;
+        vestedAmount = (userAmount * vestedPortion) / SCALE;
     }
 }

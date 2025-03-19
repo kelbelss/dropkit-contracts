@@ -9,3 +9,11 @@ struct Config {
     uint256 startTimestamp;
     uint256 vestingDuration;
 }
+
+struct Recipient {
+    uint256 totalAmountDropped;
+    uint256 totalAmountWithdrawn;
+    uint256 totalAmountRemaining;
+    bool hasActivatedDrop;
+    bool hasWithdrawnFullDrop;
+}
