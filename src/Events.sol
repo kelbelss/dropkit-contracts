@@ -12,4 +12,5 @@ abstract contract Events {
         uint256 vestingDuration
     );
     event DropActivated(uint256 indexed dropID, address indexed token, address indexed recipient, uint256 amount);
+    event AirdropTokensWithdrawn(uint256 indexed dropID, address indexed recipient, uint256 amountToWithdraw);
 }

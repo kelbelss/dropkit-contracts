@@ -15,4 +15,5 @@ abstract contract Errors {
     error NotActivated();
     error AlreadyWithdrawn();
     error InsufficientFunds();
+    error VestingPeriodIsComplete();
 }

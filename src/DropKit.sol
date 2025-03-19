@@ -113,39 +113,52 @@ contract DropKit is IDropKit, Storage, Ownable {
         require(recipient.hasActivatedDrop, NotActivated());
         require(!recipient.hasWithdrawnFullDrop, AlreadyWithdrawn());
 
-        uint256 recipentsFullAmount = recipient.totalAmountDropped;
+        uint256 recipientsAmountRemaining = recipient.totalAmountRemaining;
 
         // Check if the recipient has enough funds owed
-        require(amountToWithdraw <= recipentsFullAmount, InsufficientFunds());
+        require(amountToWithdraw <= recipientsAmountRemaining, InsufficientFunds());
 
-        if (amountToWithdraw == recipentsFullAmount) {
+        if (amountToWithdraw == recipientsAmountRemaining) {
             recipient.hasWithdrawnFullDrop = true;
             recipient.totalAmountRemaining -= amountToWithdraw;
-        } else if (amountToWithdraw < recipient.totalAmountRemaining) {
+        } else {
             recipient.totalAmountRemaining -= amountToWithdraw;
         }
 
         // transfer tokens to the recipient
         config.token.safeTransfer(msg.sender, amountToWithdraw);
+
+        emit AirdropTokensWithdrawn(dropID, msg.sender, amountToWithdraw);
     }
 
-    // scenarios: 1. fully vested - no penalty applies; 2. partially vested - calculate penalty 20% of unvested tokens being withdrawn
-
-    function getPenalty(uint256 dropID, uint256 amountToWithdraw) internal view returns (uint256 penalty) {
+    function handleWithdrawals(uint256 dropID, uint256 amountToWithdraw) internal view returns (uint256 withdrawalAmount) {
         Config memory config = drops[dropID];
-        // storage for changing state? TODO: who is calling this function if its internal?
         Recipient storage recipient = recipients[msg.sender];
 
         uint256 userAmount = recipient.totalAmountDropped;
+        uint256 userAmountRemaining = recipient.totalAmountRemaining;
+
         uint256 vestedAmount = getVestedAmount(dropID, userAmount);
 
+        uint256 unvestedAmount = userAmount - vestedAmount;
+
+        uint256 vestedBalanceAvailable = userAmountRemaining - unvestedAmount;
+
         // if recipient is withdrawing less than/equal to vested amount, no penalty
-        if (amountToWithdraw <= vestedAmount) {
-            return 0;
+        if (amountToWithdraw <= vestedBalanceAvailable) {
+            return amountToWithdraw;
         }
 
         // if recipient is withdrawing more than vested amount
-        uint256 unvestedWithdrawalAmount = amountToWithdraw - vestedAmount;
+        uint256 unvestedWithdrawalAmount = amountToWithdraw - vestedBalanceAvailable;
+
+        uint256 penalty = getPenalty(dropID, unvestedWithdrawalAmount);
+
+        withdrawalAmount = vestedBalanceAvailable + unvestedWithdrawalAmount - penalty;
+    }
+
+    function getPenalty(uint256 dropID, uint256 amountToWithdraw) internal view returns (uint256 penalty) {
+        Config memory config = drops[dropID];
 
         // applies to claiming tokens when some are still unvested
         penalty = (unvestedWithdrawalAmount * config.earlyExitPenalty) / SCALE;
@@ -154,18 +167,10 @@ contract DropKit is IDropKit, Storage, Ownable {
     function getVestedAmount(uint256 dropID, uint256 userAmount) internal view returns (uint256 vestedAmount) {
         Config memory config = drops[dropID];
 
-        uint256 vestPeriod = config.startTimestamp + config.vestingDuration;
-
-        // fully vested - no penalty applies
-        if (block.timestamp > vestPeriod) {
-            return userAmount;
-        }
-
-        // partially vested - time since the start
-        uint256 timeSinceStart = block.timestamp - config.startTimestamp;
+        uint256 vestedTime = getVestedTime(dropID);
 
         // percentage calculation for vested portion
-        uint256 vestedPortion = (timeSinceStart * SCALE) / config.vestingDuration;
+        uint256 vestedPortion = (vestedTime * SCALE) / config.vestingDuration;
 
         // make sure the vested portion doesn't go over 100%
         if (vestedPortion > SCALE) {
@@ -174,5 +179,19 @@ contract DropKit is IDropKit, Storage, Ownable {
 
         // calculate the vested amount with percentage
         vestedAmount = (userAmount * vestedPortion) / SCALE;
+    }
+
+    function getVestedTime(uint256 dropID) internal view returns (uint256 vestedTime) {
+        Config memory config = drops[dropID];
+
+        uint256 fullVestPeriod = config.startTimestamp + config.vestingDuration;
+
+        // vesting period complete
+        if (block.timestamp >= fullVestPeriod) {
+            return config.vestingDuration;
+        }
+
+        // partially vested - time since the start
+        vestedTime = block.timestamp - config.startTimestamp;
     }
 }
