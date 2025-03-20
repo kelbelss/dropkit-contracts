@@ -9,29 +9,47 @@ import {Ownable} from "openzeppelin/contracts/access/Ownable.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {MerkleProofLib} from "solady/utils/MerkleProofLib.sol";
 
+/// @title DropKit
+/// @author kelbels
+/// @notice A contract for creating and managing token airdrops with vesting and early withdrawal penalties.
+/// @dev This contract allows users (droppers) to create airdrops of ERC20 tokens.  Recipients can claim their
+/// tokens according to a vesting schedule.  Early withdrawals are possible but incur a penalty.
 contract DropKit is IDropKit, Storage, Ownable {
     using SafeTransferLib for address;
 
     constructor() Ownable(msg.sender) {}
 
-    // ADMIN
+    // ADMIN FUNCTIONS
+
+    /// @notice Sets the minimum allowed early exit penalty.
+    /// @dev Only callable by the contract owner.
+    /// @param newMinEarlyExitPenaltyAllowed The new minimum early exit penalty (scaled by 1e18).
     function setMinEarlyExitPenaltyAllowed(uint256 newMinEarlyExitPenaltyAllowed) public onlyOwner {
         minEarlyExitPenaltyAllowed = newMinEarlyExitPenaltyAllowed;
     }
 
+    /// @notice Sets the creation price for airdrops.
+    /// @dev Only callable by the contract owner.  This is paid in MON.
+    /// @param newCreationPrice The new creation price for airdrops.
     function setCreationPrice(uint256 newCreationPrice) public onlyOwner {
         creationPrice = newCreationPrice;
     }
 
+    /// @notice Sets the global claim deadline for airdrops.
+    /// @dev Only callable by the contract owner.  This is a duration (in seconds) after the airdrop's start timestamp.
+    /// @param newClaimDeadline The new claim deadline duration (in seconds).
     function setClaimDeadline(uint256 newClaimDeadline) public onlyOwner {
         claimDeadline = newClaimDeadline;
-    } // one year
+    }
 
+    /// @notice Allows the owner to claim fees collected by the contract.
+    /// @dev Only callable by the contract owner.
     function claimFees(address token) public payable onlyOwner {
         // TODO: MON - needs to account for creationFees and 10% penalty fees?
     }
 
-    // DROPPER
+    // DROPPER FUNCTIONS
+
     function createDrop(
         address token,
         bytes32 merkleRoot,
@@ -76,13 +94,18 @@ contract DropKit is IDropKit, Storage, Ownable {
         emit DropCreated(dropID, token, totalAmount, earlyExitPenalty, startTimestamp, vestingDuration);
     }
 
-    function withdrawUnclaimedTokens(uint256 _dropID) public {} // only after a year
+    // RECIPIENT FUNCTIONS
 
-    // RECIPIENT
+    /// @notice Activates the airdrop for the calling recipient.
+    /// @dev Checks eligibility via Merkle proof and prevents double-claiming.  The airdrop must have started.
+    /// @param dropID The ID of the airdrop to activate.
+    /// @param amount The amount of tokens the recipient is claiming, must match the amount in the Merkle proof.
+    /// @param merkleProof The Merkle proof demonstrating the recipient's eligibility.
+    /// @dev Emits a `DropActivated` event.
     function activateAirdrop(uint256 dropID, uint256 amount, bytes32[] memory merkleProof) public {
         Config memory config = drops[dropID];
         // storage for changing state?
-        Recipient storage recipient = recipients[msg.sender];
+        Recipient storage recipient = recipients[msg.sender][dropID];
 
         // Check if the drop is active
         require(block.timestamp >= config.startTimestamp, AirdropNotStarted());
@@ -103,11 +126,16 @@ contract DropKit is IDropKit, Storage, Ownable {
         emit DropActivated(dropID, config.token, msg.sender, amount);
     }
 
+    /// @notice Allows a recipient to withdraw airdropped tokens.
+    /// @dev Calculates vested and unvested amounts, applies penalties for early withdrawals of unvested tokens, and transfers the tokens.
+    /// @param dropID The ID of the airdrop to withdraw from.
+    /// @param amountToWithdraw The amount of tokens the recipient wants to withdraw.
+    /// @dev Emits an `AirdropTokensWithdrawn` event.
     function withdrawAirdropTokens(uint256 dropID, uint256 amountToWithdraw) public {
         // TODO: calculate penalty amount and add to this function
         Config memory config = drops[dropID];
         // storage for changing state? TODO: who is calling this function if its internal?
-        Recipient storage recipient = recipients[msg.sender];
+        Recipient storage recipient = recipients[msg.sender][dropID];
 
         // Check if the recipient has not activated or already withdrawn
         require(recipient.hasActivatedDrop, NotActivated());
@@ -133,8 +161,14 @@ contract DropKit is IDropKit, Storage, Ownable {
         emit AirdropTokensWithdrawn(dropID, msg.sender, amountToWithdraw);
     }
 
+    // INTERNAL FUNCTIONS
+
+    /// @notice Internal function to handle withdrawal logic, including penalty calculation.
+    /// @param dropID The ID of the airdrop.
+    /// @param amountToWithdraw The amount the user wants to withdraw.
+    /// @return withdrawalAmount The actual amount withdrawn after penalties are applied.
     function handleWithdrawals(uint256 dropID, uint256 amountToWithdraw) internal returns (uint256 withdrawalAmount) {
-        Recipient storage recipient = recipients[msg.sender];
+        Recipient storage recipient = recipients[msg.sender][dropID];
 
         uint256 userAmount = recipient.totalAmountDropped;
         uint256 userAmountRemaining = recipient.totalAmountRemaining;
@@ -160,6 +194,10 @@ contract DropKit is IDropKit, Storage, Ownable {
         withdrawalAmount = vestedBalanceAvailable + unvestedWithdrawalAmount - penalty;
     }
 
+    /// @notice Calculates the penalty for withdrawing unvested tokens.
+    /// @param dropID The ID of the airdrop.
+    /// @param unvestedWithdrawalAmount The amount of unvested tokens being withdrawn.
+    /// @return penalty The calculated penalty (scaled by 1e18).
     function getPenalty(uint256 dropID, uint256 unvestedWithdrawalAmount) internal view returns (uint256 penalty) {
         Config memory config = drops[dropID];
 
@@ -167,6 +205,10 @@ contract DropKit is IDropKit, Storage, Ownable {
         penalty = (unvestedWithdrawalAmount * config.earlyExitPenalty) / SCALE;
     }
 
+    /// @notice Calculates the amount of tokens that have vested for a recipient.
+    /// @param dropID The ID of the airdrop.
+    /// @param userAmount The total amount of tokens the user is entitled to.
+    /// @return vestedAmount The amount of tokens that have vested.
     function getVestedAmount(uint256 dropID, uint256 userAmount) internal view returns (uint256 vestedAmount) {
         Config memory config = drops[dropID];
 
@@ -184,6 +226,9 @@ contract DropKit is IDropKit, Storage, Ownable {
         vestedAmount = (userAmount * vestedPortion) / SCALE;
     }
 
+    /// @notice Calculates the amount of time that has vested for a given airdrop.
+    /// @param dropID The ID of the airdrop.
+    /// @return vestedTime The amount of time (in seconds) that has vested.
     function getVestedTime(uint256 dropID) internal view returns (uint256 vestedTime) {
         Config memory config = drops[dropID];
 
@@ -199,5 +244,4 @@ contract DropKit is IDropKit, Storage, Ownable {
     }
 
     // TODO: track balances
-    // TODO: add ID to recipient struct
 }
