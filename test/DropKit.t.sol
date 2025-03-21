@@ -45,7 +45,7 @@ contract TestDropKit is BaseTest {
         assertEq(mockToken.balanceOf(address(dropKit)), totalDropAmount);
     }
 
-    function test_DropKit_activateAirdrop() public {
+    function test_DropKit_activateDrop() public {
         // Create a drop
         vm.startPrank(DROP_CREATOR);
         // Approve dropkit contract to transfer creator tokens
@@ -61,7 +61,7 @@ contract TestDropKit is BaseTest {
         bytes32[] memory proof = getMerkleProof(address(BOB), bobAmount);
 
         // activate drop
-        dropKit.activateAirdrop(dropID, bobAmount, proof);
+        dropKit.activateDrop(dropID, bobAmount, proof);
         vm.stopPrank();
 
         // Check recipient details are set
@@ -90,7 +90,7 @@ contract TestDropKit is BaseTest {
         bytes32[] memory proof = getMerkleProof(address(BOB), bobAmount);
 
         // activate drop
-        dropKit.activateAirdrop(dropID, bobAmount, proof);
+        dropKit.activateDrop(dropID, bobAmount, proof);
         // vm.stopPrank();
 
         vm.warp(defaultStartTime + 80 days);

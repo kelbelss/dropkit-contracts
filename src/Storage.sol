@@ -7,7 +7,7 @@ import {Config, Recipient} from "./Types.sol";
 import {Constants} from "./Constants.sol";
 
 abstract contract Storage is Events, Errors, Constants {
-    uint256 public minEarlyExitPenaltyAllowed;
+    uint256 public minEarlyExitPenalty;
     uint256 public creationPrice;
     uint256 public claimDeadline;
     uint256 public totalFees;

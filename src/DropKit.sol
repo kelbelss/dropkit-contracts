@@ -23,9 +23,9 @@ contract DropKit is IDropKit, Storage, Ownable {
 
     /// @notice Sets the minimum allowed early exit penalty.
     /// @dev Only callable by the contract owner.
-    /// @param newMinEarlyExitPenaltyAllowed The new minimum early exit penalty (scaled by 1e18).
-    function setMinEarlyExitPenaltyAllowed(uint256 newMinEarlyExitPenaltyAllowed) public onlyOwner {
-        minEarlyExitPenaltyAllowed = newMinEarlyExitPenaltyAllowed;
+    /// @param newMinEarlyExitPenalty The new minimum early exit penalty (scaled by 1e18).
+    function setMinEarlyExitPenalty(uint256 newMinEarlyExitPenalty) public onlyOwner {
+        minEarlyExitPenalty = newMinEarlyExitPenalty;
     }
 
     /// @notice Sets the creation price for airdrops.
@@ -69,7 +69,7 @@ contract DropKit is IDropKit, Storage, Ownable {
         require(startTimestamp >= block.timestamp, InvalidStartDate());
 
         // Check early exit penalty
-        require(earlyExitPenalty >= minEarlyExitPenaltyAllowed, EarlyExitPenaltyTooLow());
+        require(earlyExitPenalty >= minEarlyExitPenalty, EarlyExitPenaltyTooLow());
         require(earlyExitPenalty <= MAX_EARLY_EXIT_PENALTY_ALLOWED, EarlyExitPenaltyTooHigh());
 
         // transfer token to this contract
@@ -102,14 +102,16 @@ contract DropKit is IDropKit, Storage, Ownable {
     /// @param amount The amount of tokens the recipient is claiming, must match the amount in the Merkle proof.
     /// @param merkleProof The Merkle proof demonstrating the recipient's eligibility.
     /// @dev Emits a `DropActivated` event.
-    function activateAirdrop(uint256 dropID, uint256 amount, bytes32[] memory merkleProof) public {
+    function activateDrop(uint256 dropID, uint256 amount, bytes32[] memory merkleProof) public {
         Config memory config = drops[dropID];
         // storage for changing state?
         Recipient storage recipient = recipients[msg.sender][dropID];
 
         // Check if the drop is active
-        require(block.timestamp >= config.startTimestamp, AirdropNotStarted());
-        require(block.timestamp < config.startTimestamp + claimDeadline, DropExpired());
+        require(block.timestamp >= config.startTimestamp, AirdropNotStarted(config.startTimestamp));
+        require(
+            block.timestamp < config.startTimestamp + claimDeadline, DropExpired(config.startTimestamp + claimDeadline)
+        );
 
         // Check if the recipient has already claimed
         require(!recipient.hasActivatedDrop, AlreadyActivated());
@@ -120,8 +122,8 @@ contract DropKit is IDropKit, Storage, Ownable {
 
         // update the activated status and amount mapping
         recipient.hasActivatedDrop = true;
-        recipient.totalAmountDropped += amount;
-        recipient.totalAmountRemaining += amount;
+        recipient.totalAmountDropped = amount;
+        recipient.totalAmountRemaining = amount;
 
         emit DropActivated(dropID, config.token, msg.sender, amount);
     }
@@ -146,7 +148,7 @@ contract DropKit is IDropKit, Storage, Ownable {
         // Check if the recipient has enough funds owed
         require(amountToWithdraw <= recipientsAmountRemaining, InsufficientFunds());
 
-        uint256 withdrawalAmount = handleWithdrawals(dropID, amountToWithdraw);
+        uint256 withdrawalAmount = _handleWithdrawals(dropID, amountToWithdraw);
 
         if (withdrawalAmount == recipient.totalAmountRemaining) {
             recipient.hasWithdrawnFullDrop = true;
@@ -167,13 +169,13 @@ contract DropKit is IDropKit, Storage, Ownable {
     /// @param dropID The ID of the airdrop.
     /// @param amountToWithdraw The amount the user wants to withdraw.
     /// @return withdrawalAmount The actual amount withdrawn after penalties are applied.
-    function handleWithdrawals(uint256 dropID, uint256 amountToWithdraw) internal returns (uint256 withdrawalAmount) {
+    function _handleWithdrawals(uint256 dropID, uint256 amountToWithdraw) internal returns (uint256 withdrawalAmount) {
         Recipient storage recipient = recipients[msg.sender][dropID];
 
         uint256 userAmount = recipient.totalAmountDropped;
         uint256 userAmountRemaining = recipient.totalAmountRemaining;
 
-        uint256 vestedAmount = getVestedAmount(dropID, userAmount);
+        uint256 vestedAmount = _getVestedAmount(dropID, userAmount);
 
         uint256 unvestedAmount = userAmount - vestedAmount;
 
@@ -187,7 +189,7 @@ contract DropKit is IDropKit, Storage, Ownable {
         // if recipient is withdrawing more than vested amount
         uint256 unvestedWithdrawalAmount = amountToWithdraw - vestedBalanceAvailable;
 
-        uint256 penalty = getPenalty(dropID, unvestedWithdrawalAmount);
+        uint256 penalty = _getPenalty(dropID, unvestedWithdrawalAmount);
 
         recipient.totalAmountRemaining -= penalty;
 
@@ -198,7 +200,7 @@ contract DropKit is IDropKit, Storage, Ownable {
     /// @param dropID The ID of the airdrop.
     /// @param unvestedWithdrawalAmount The amount of unvested tokens being withdrawn.
     /// @return penalty The calculated penalty (scaled by 1e18).
-    function getPenalty(uint256 dropID, uint256 unvestedWithdrawalAmount) internal view returns (uint256 penalty) {
+    function _getPenalty(uint256 dropID, uint256 unvestedWithdrawalAmount) internal view returns (uint256 penalty) {
         Config memory config = drops[dropID];
 
         // applies to claiming tokens when some are still unvested
@@ -209,10 +211,10 @@ contract DropKit is IDropKit, Storage, Ownable {
     /// @param dropID The ID of the airdrop.
     /// @param userAmount The total amount of tokens the user is entitled to.
     /// @return vestedAmount The amount of tokens that have vested.
-    function getVestedAmount(uint256 dropID, uint256 userAmount) internal view returns (uint256 vestedAmount) {
+    function _getVestedAmount(uint256 dropID, uint256 userAmount) internal view returns (uint256 vestedAmount) {
         Config memory config = drops[dropID];
 
-        uint256 vestedTime = getVestedTime(dropID);
+        uint256 vestedTime = _getVestedTime(dropID);
 
         // percentage calculation for vested portion
         uint256 vestedPortion = (vestedTime * SCALE) / config.vestingDuration;
@@ -229,7 +231,7 @@ contract DropKit is IDropKit, Storage, Ownable {
     /// @notice Calculates the amount of time that has vested for a given airdrop.
     /// @param dropID The ID of the airdrop.
     /// @return vestedTime The amount of time (in seconds) that has vested.
-    function getVestedTime(uint256 dropID) internal view returns (uint256 vestedTime) {
+    function _getVestedTime(uint256 dropID) internal view returns (uint256 vestedTime) {
         Config memory config = drops[dropID];
 
         uint256 fullVestPeriod = config.startTimestamp + config.vestingDuration;
