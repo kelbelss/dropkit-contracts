@@ -66,7 +66,7 @@ contract TestDropKit is BaseTest {
 
         // Check recipient details are set
         (uint256 totalAmountDropped, uint256 totalAmountRemaining, bool hasActivatedDrop, bool hasWithdrawnFullDrop) =
-            dropKit.recipients(address(BOB));
+            dropKit.recipients(address(BOB), dropID);
 
         assertEq(totalAmountDropped, bobAmount);
         assertEq(totalAmountRemaining, bobAmount);
@@ -103,7 +103,7 @@ contract TestDropKit is BaseTest {
 
         // Check recipient details
         (uint256 totalAmountDropped, uint256 totalAmountRemaining, bool hasActivatedDrop, bool hasWithdrawnFullDrop) =
-            dropKit.recipients(address(BOB));
+            dropKit.recipients(address(BOB), dropID);
 
         assertEq(totalAmountDropped, bobAmount);
         assertEq(totalAmountRemaining, 0);
