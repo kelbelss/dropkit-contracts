@@ -201,10 +201,8 @@ contract DropKit is IDropKit, Storage, Ownable {
     /// @param unvestedWithdrawalAmount The amount of unvested tokens being withdrawn.
     /// @return penalty The calculated penalty (scaled by 1e18).
     function _getPenalty(uint256 dropID, uint256 unvestedWithdrawalAmount) internal view returns (uint256 penalty) {
-        Config memory config = drops[dropID];
-
         // applies to claiming tokens when some are still unvested
-        penalty = (unvestedWithdrawalAmount * config.earlyExitPenalty) / SCALE;
+        penalty = (unvestedWithdrawalAmount * drops[dropID].earlyExitPenalty) / SCALE;
     }
 
     /// @notice Calculates the amount of tokens that have vested for a recipient.
