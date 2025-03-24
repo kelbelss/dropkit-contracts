@@ -26,7 +26,7 @@ contract BaseTest is Test {
     bytes32[] hashedMerkleItems;
     bytes32 merkleRoot;
 
-    uint256 defaultClaimDeadline = 365 days;
+    uint256 defaultActivationDeadline = 365 days;
     uint256 defaultStartTime = block.timestamp + 1 days;
 
     function setUp() public virtual {
@@ -36,7 +36,7 @@ contract BaseTest is Test {
         vm.startPrank(GOV);
         dropKit = new DropKit();
         vm.deal(DROP_CREATOR, 10 ether);
-        dropKit.setClaimDeadline(defaultClaimDeadline);
+        dropKit.setActivationDeadline(defaultActivationDeadline);
         dropKit.setCreationPrice(2 ether);
         dropKit.setMinEarlyExitPenalty(1e17);
         vm.stopPrank();

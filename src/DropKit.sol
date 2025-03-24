@@ -37,9 +37,9 @@ contract DropKit is IDropKit, Storage, Ownable {
 
     /// @notice Sets the global claim deadline for airdrops.
     /// @dev Only callable by the contract owner.  This is a duration (in seconds) after the airdrop's start timestamp.
-    /// @param newClaimDeadline The new claim deadline duration (in seconds).
-    function setClaimDeadline(uint256 newClaimDeadline) public onlyOwner {
-        claimDeadline = newClaimDeadline;
+    /// @param newActivationDeadline The new claim deadline duration (in seconds).
+    function setActivationDeadline(uint256 newActivationDeadline) public onlyOwner {
+        activationDeadline = newActivationDeadline;
     }
 
     /// @notice Allows the owner to claim fees collected by the contract.
@@ -110,15 +110,16 @@ contract DropKit is IDropKit, Storage, Ownable {
         // Check if the drop is active
         require(block.timestamp >= config.startTimestamp, AirdropNotStarted(config.startTimestamp));
         require(
-            block.timestamp < config.startTimestamp + claimDeadline, DropExpired(config.startTimestamp + claimDeadline)
+            block.timestamp < config.startTimestamp + activationDeadline,
+            DropExpired(config.startTimestamp + activationDeadline)
         );
 
         // Check if the recipient has already claimed
         require(!recipient.hasActivatedDrop, AlreadyActivated());
 
         // Check if the recipient is in the merkle tree
-        bytes32 leaf = keccak256(abi.encodePacked(msg.sender, amount));
-        require(MerkleProofLib.verify(merkleProof, config.merkleRoot, leaf), NotEligibleForAirdrop());
+        bool verified = _verifyMerkleProof(dropID, msg.sender, amount, merkleProof);
+        require(verified, NotEligibleForAirdrop());
 
         // update the activated status and amount mapping
         recipient.hasActivatedDrop = true;
@@ -126,6 +127,24 @@ contract DropKit is IDropKit, Storage, Ownable {
         recipient.totalAmountRemaining = amount;
 
         emit DropActivated(dropID, config.token, msg.sender, amount);
+    }
+
+    function verifyMerkleProof(uint256 dropID, address recipient, uint256 amount, bytes32[] memory merkleProof)
+        external
+        view
+        returns (bool)
+    {
+        return _verifyMerkleProof(dropID, recipient, amount, merkleProof);
+    }
+
+    function _verifyMerkleProof(uint256 dropID, address recipient, uint256 amount, bytes32[] memory merkleProof)
+        internal
+        view
+        returns (bool)
+    {
+        // Check if the recipient is in the merkle tree
+        bytes32 leaf = keccak256(abi.encodePacked(recipient, amount));
+        return MerkleProofLib.verify(merkleProof, drops[dropID].merkleRoot, leaf);
     }
 
     /// @notice Allows a recipient to withdraw airdropped tokens.
@@ -194,6 +213,7 @@ contract DropKit is IDropKit, Storage, Ownable {
         recipient.totalAmountRemaining -= penalty;
 
         amountOut = vestedBalanceAvailable + unvestedWithdrawalAmount - penalty;
+        // TODO: refactor this function to be clearer and more gas efficient
     }
 
     /// @notice Calculates the penalty for withdrawing unvested tokens.
