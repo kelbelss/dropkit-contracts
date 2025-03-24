@@ -105,7 +105,7 @@ contract DropKit is IDropKit, Storage, Ownable {
     function activateDrop(uint256 dropID, uint256 amount, bytes32[] memory merkleProof) public {
         Config memory config = drops[dropID];
         // storage for changing state?
-        Recipient storage recipient = recipients[msg.sender][dropID];
+        Recipient storage recipient = recipients[dropID][msg.sender];
 
         // Check if the drop is active
         require(block.timestamp >= config.startTimestamp, AirdropNotStarted(config.startTimestamp));
@@ -137,7 +137,7 @@ contract DropKit is IDropKit, Storage, Ownable {
         // TODO: calculate penalty amount and add to this function
         Config memory config = drops[dropID];
         // storage for changing state? TODO: who is calling this function if its internal?
-        Recipient storage recipient = recipients[msg.sender][dropID];
+        Recipient storage recipient = recipients[dropID][msg.sender];
 
         // Check if the recipient has not activated or already withdrawn
         require(recipient.hasActivatedDrop, NotActivated());
@@ -170,7 +170,7 @@ contract DropKit is IDropKit, Storage, Ownable {
     /// @param amountToWithdraw The amount the user wants to withdraw.
     /// @return withdrawalAmount The actual amount withdrawn after penalties are applied.
     function _handleWithdrawals(uint256 dropID, uint256 amountToWithdraw) internal returns (uint256 withdrawalAmount) {
-        Recipient storage recipient = recipients[msg.sender][dropID];
+        Recipient storage recipient = recipients[dropID][msg.sender];
 
         uint256 userAmount = recipient.totalAmountDropped;
         uint256 userAmountRemaining = recipient.totalAmountRemaining;
