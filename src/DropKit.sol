@@ -131,9 +131,9 @@ contract DropKit is IDropKit, Storage, Ownable {
     /// @notice Allows a recipient to withdraw airdropped tokens.
     /// @dev Calculates vested and unvested amounts, applies penalties for early withdrawals of unvested tokens, and transfers the tokens.
     /// @param dropID The ID of the airdrop to withdraw from.
-    /// @param amountToWithdraw The amount of tokens the recipient wants to withdraw.
+    /// @param amountRequested The amount of tokens the recipient wants to withdraw.
     /// @dev Emits an `AirdropTokensWithdrawn` event.
-    function withdrawAirdropTokens(uint256 dropID, uint256 amountToWithdraw) public {
+    function withdrawAirdropTokens(uint256 dropID, uint256 amountRequested) public {
         // TODO: calculate penalty amount and add to this function
         Config memory config = drops[dropID];
         // storage for changing state? TODO: who is calling this function if its internal?
@@ -146,30 +146,30 @@ contract DropKit is IDropKit, Storage, Ownable {
         uint256 recipientsAmountRemaining = recipient.totalAmountRemaining;
 
         // Check if the recipient has enough funds owed
-        require(amountToWithdraw <= recipientsAmountRemaining, InsufficientFunds());
+        require(amountRequested <= recipientsAmountRemaining, InsufficientFunds());
 
-        uint256 withdrawalAmount = _handleWithdrawals(dropID, amountToWithdraw);
+        uint256 amountOut = _handleWithdrawals(dropID, amountRequested);
 
-        if (withdrawalAmount == recipient.totalAmountRemaining) {
+        if (amountOut == recipient.totalAmountRemaining) {
             recipient.hasWithdrawnFullDrop = true;
-            recipient.totalAmountRemaining -= withdrawalAmount;
+            recipient.totalAmountRemaining -= amountOut;
         } else {
-            recipient.totalAmountRemaining -= withdrawalAmount;
+            recipient.totalAmountRemaining -= amountOut;
         }
 
         // transfer tokens to the recipient
-        config.token.safeTransfer(msg.sender, withdrawalAmount);
+        config.token.safeTransfer(msg.sender, amountOut);
 
-        emit AirdropTokensWithdrawn(dropID, msg.sender, amountToWithdraw);
+        emit AirdropTokensWithdrawn(dropID, msg.sender, amountOut);
     }
 
     // INTERNAL FUNCTIONS
 
     /// @notice Internal function to handle withdrawal logic, including penalty calculation.
     /// @param dropID The ID of the airdrop.
-    /// @param amountToWithdraw The amount the user wants to withdraw.
-    /// @return withdrawalAmount The actual amount withdrawn after penalties are applied.
-    function _handleWithdrawals(uint256 dropID, uint256 amountToWithdraw) internal returns (uint256 withdrawalAmount) {
+    /// @param amountRequested The amount the user wants to withdraw.
+    /// @return amountOut The actual amount withdrawn after penalties are applied.
+    function _handleWithdrawals(uint256 dropID, uint256 amountRequested) internal returns (uint256 amountOut) {
         Recipient storage recipient = recipients[dropID][msg.sender];
 
         uint256 userAmount = recipient.totalAmountDropped;
@@ -182,18 +182,18 @@ contract DropKit is IDropKit, Storage, Ownable {
         uint256 vestedBalanceAvailable = userAmountRemaining - unvestedAmount;
 
         // if recipient is withdrawing less than/equal to vested amount, no penalty
-        if (amountToWithdraw <= vestedBalanceAvailable) {
-            return amountToWithdraw;
+        if (amountRequested <= vestedBalanceAvailable) {
+            return amountRequested;
         }
 
         // if recipient is withdrawing more than vested amount
-        uint256 unvestedWithdrawalAmount = amountToWithdraw - vestedBalanceAvailable;
+        uint256 unvestedWithdrawalAmount = amountRequested - vestedBalanceAvailable;
 
         uint256 penalty = _getPenalty(dropID, unvestedWithdrawalAmount);
 
         recipient.totalAmountRemaining -= penalty;
 
-        withdrawalAmount = vestedBalanceAvailable + unvestedWithdrawalAmount - penalty;
+        amountOut = vestedBalanceAvailable + unvestedWithdrawalAmount - penalty;
     }
 
     /// @notice Calculates the penalty for withdrawing unvested tokens.
