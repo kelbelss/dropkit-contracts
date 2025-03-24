@@ -186,14 +186,13 @@ contract DropKit is IDropKit, Storage, Ownable {
     function _handleWithdrawals(uint256 dropID, uint256 amountRequested) internal returns (uint256 amountOut) {
         Recipient storage recipient = recipients[dropID][msg.sender];
 
-        uint256 userAmount = recipient.totalAmountDropped;
-        uint256 userAmountRemaining = recipient.totalAmountRemaining;
+        uint256 usersInitialAmount = recipient.totalAmountDropped;
+        uint256 usersRemainingAmount = recipient.totalAmountRemaining;
 
-        uint256 vestedAmount = _getVestedAmount(dropID, userAmount);
+        uint256 vestedAmount = _getVestedAmount(dropID, usersInitialAmount);
 
-        uint256 unvestedAmount = userAmount - vestedAmount;
-
-        uint256 vestedBalanceAvailable = userAmountRemaining - unvestedAmount;
+        // users remaining balance - unvested balance
+        uint256 vestedBalanceAvailable = usersRemainingAmount - (usersInitialAmount - vestedAmount);
 
         // if recipient is withdrawing less than/equal to vested amount, no penalty
         if (amountRequested <= vestedBalanceAvailable) {
