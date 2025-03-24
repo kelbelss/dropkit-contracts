@@ -1,20 +1,23 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.28;
 
-import {Test, console} from "forge-std/Test.sol";
-import {Storage} from "./Storage.sol";
-import {Config, Recipient} from "./Types.sol";
-import {IDropKit} from "./interfaces/IDropKit.sol";
 import {Ownable} from "openzeppelin/contracts/access/Ownable.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {MerkleProofLib} from "solady/utils/MerkleProofLib.sol";
+
+import {DropShares} from "./DropShares.sol";
+import {DropConfig, DropVars, Recipient} from "./Types.sol";
+import {IDropKit} from "./interfaces/IDropKit.sol";
+
+// TODO remove
+import "forge-std/Test.sol";
 
 /// @title DropKit
 /// @author kelbels
 /// @notice A contract for creating and managing token airdrops with vesting and early withdrawal penalties.
 /// @dev This contract allows users (droppers) to create airdrops of ERC20 tokens.  Recipients can claim their
 /// tokens according to a vesting schedule.  Early withdrawals are possible but incur a penalty.
-contract DropKit is IDropKit, Storage, Ownable {
+contract DropKit is IDropKit, DropShares, Ownable {
     using SafeTransferLib for address;
 
     constructor() Ownable(msg.sender) {}
