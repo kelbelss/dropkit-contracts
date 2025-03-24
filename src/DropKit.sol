@@ -160,7 +160,7 @@ contract DropKit is IDropKit, Storage, Ownable {
 
         // Check if the recipient has not activated or already withdrawn
         require(recipient.hasActivatedDrop, NotActivated());
-        require(!recipient.hasWithdrawnFullDrop, AlreadyWithdrawn());
+        require(recipient.totalAmountRemaining != 0, AlreadyWithdrawn());
 
         uint256 recipientsAmountRemaining = recipient.totalAmountRemaining;
 
@@ -169,12 +169,7 @@ contract DropKit is IDropKit, Storage, Ownable {
 
         uint256 amountOut = _handleWithdrawals(dropID, amountRequested);
 
-        if (amountOut == recipient.totalAmountRemaining) {
-            recipient.hasWithdrawnFullDrop = true;
-            recipient.totalAmountRemaining -= amountOut;
-        } else {
-            recipient.totalAmountRemaining -= amountOut;
-        }
+        recipient.totalAmountRemaining -= amountOut;
 
         // transfer tokens to the recipient
         config.token.safeTransfer(msg.sender, amountOut);

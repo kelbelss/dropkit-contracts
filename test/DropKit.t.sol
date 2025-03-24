@@ -65,13 +65,12 @@ contract TestDropKit is BaseTest {
         vm.stopPrank();
 
         // Check recipient details are set
-        (uint256 totalAmountDropped, uint256 totalAmountRemaining, bool hasActivatedDrop, bool hasWithdrawnFullDrop) =
+        (uint256 totalAmountDropped, uint256 totalAmountRemaining, bool hasActivatedDrop) =
             dropKit.recipients(dropID, address(BOB));
 
         assertEq(totalAmountDropped, bobAmount);
         assertEq(totalAmountRemaining, bobAmount);
         assertEq(hasActivatedDrop, true);
-        assertEq(hasWithdrawnFullDrop, false);
     }
 
     function test_DropKit_withdrawAirdropTokens() public {
@@ -102,14 +101,13 @@ contract TestDropKit is BaseTest {
         vm.stopPrank();
 
         // Check recipient details
-        (uint256 totalAmountDropped, uint256 totalAmountRemaining, bool hasActivatedDrop, bool hasWithdrawnFullDrop) =
+        (uint256 totalAmountDropped, uint256 totalAmountRemaining, bool hasActivatedDrop) =
             dropKit.recipients(dropID, address(BOB));
 
         assertEq(totalAmountDropped, bobAmount);
         assertEq(totalAmountRemaining, 0);
         console.log("Bob's balance is: ", mockToken.balanceOf(address(BOB)));
         assertEq(hasActivatedDrop, true);
-        assertEq(hasWithdrawnFullDrop, true);
         console.log("dropkit balance", mockToken.balanceOf(address(dropKit)));
     }
 }
