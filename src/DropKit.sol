@@ -186,20 +186,17 @@ contract DropKit is IDropKit, Storage, Ownable {
     function _handleWithdrawals(uint256 dropID, uint256 amountRequested) internal returns (uint256 amountOut) {
         Recipient storage recipient = recipients[dropID][msg.sender];
 
-        uint256 usersInitialAmount = recipient.totalAmountDropped;
-        uint256 usersRemainingAmount = recipient.totalAmountRemaining;
-
-        uint256 vestedAmount = _getVestedAmount(dropID, usersInitialAmount);
+        uint256 vestedAmount = _getVestedAmount(dropID, recipient.totalAmountDropped);
 
         // users remaining balance - unvested balance
-        uint256 vestedBalanceAvailable = usersRemainingAmount - (usersInitialAmount - vestedAmount);
+        uint256 vestedBalanceAvailable = recipient.totalAmountRemaining - (recipient.totalAmountDropped - vestedAmount);
 
-        // if recipient is withdrawing less than/equal to vested amount, no penalty
+        // if recipient is withdrawing less than/equal to the balance that has vested, ie. no penalty
         if (amountRequested <= vestedBalanceAvailable) {
             return amountRequested;
         }
 
-        // if recipient is withdrawing more than vested amount
+        // if recipient is withdrawing more than the balance that has vested
         uint256 unvestedWithdrawalAmount = amountRequested - vestedBalanceAvailable;
 
         uint256 penalty = _getPenalty(dropID, unvestedWithdrawalAmount);
@@ -207,7 +204,6 @@ contract DropKit is IDropKit, Storage, Ownable {
         recipient.totalAmountRemaining -= penalty;
 
         amountOut = vestedBalanceAvailable + unvestedWithdrawalAmount - penalty;
-        // TODO: refactor this function to be clearer and more gas efficient
     }
 
     /// @notice Calculates the penalty for withdrawing unvested tokens.
