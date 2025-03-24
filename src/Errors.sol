@@ -8,4 +8,12 @@ abstract contract Errors {
     error EarlyExitPenaltyTooLow();
     error EarlyExitPenaltyTooHigh();
     error FeeNotTransferred();
+    error AirdropNotStarted(uint256 startTime);
+    error DropExpired(uint256 endTime);
+    error AlreadyActivated();
+    error NotEligibleForAirdrop();
+    error NotActivated();
+    error AlreadyWithdrawn();
+    error InsufficientFunds();
+    error VestingPeriodIsComplete();
 }
