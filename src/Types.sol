@@ -3,19 +3,21 @@ pragma solidity 0.8.28;
 
 // Drop settings that will not change once set
 struct DropConfig {
+    address dropCreator;
     address token;
+    string tokenName;
+    string tokenSymbol;
     bytes32 merkleRoot;
     uint256 earlyExitPenalty;
     uint256 startTimestamp;
     uint256 vestingDuration;
-    string name;
-    string symbol;
 }
 
 // Drop variables that will change frequently
 struct DropVars {
     uint256 totalAssets;
     uint256 totalShares;
+    uint256 totalSharesActivated;
 }
 
 struct Recipient {

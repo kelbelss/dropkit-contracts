@@ -28,7 +28,7 @@ abstract contract DropShares is Storage {
 
     /// @notice Returns the address of the underlying ERC20 token of a drop, given its ID.
     function asset(uint256 dropID) public view returns (address) {
-        return drops[dropID].token;
+        return dropConfigs[dropID].token;
     }
 
     /// @notice Returns an account's total (vested and unvested) balance of shares in a drop.

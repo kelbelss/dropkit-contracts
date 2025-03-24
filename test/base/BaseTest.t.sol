@@ -4,7 +4,7 @@ pragma solidity 0.8.28;
 import {Test, console} from "forge-std/Test.sol";
 import {Merkle} from "murky/Merkle.sol";
 import {DropKit} from "src/DropKit.sol";
-import {Storage, Config} from "src/Storage.sol";
+import {Storage, DropConfig, DropVars, Recipient} from "src/Storage.sol";
 
 contract BaseTest is Test {
     DropKit dropKit;
@@ -26,8 +26,11 @@ contract BaseTest is Test {
     bytes32[] hashedMerkleItems;
     bytes32 merkleRoot;
 
+    string tokenName = "TestToken";
+    string tokenSymbol = "TT";
     uint256 defaultActivationDeadline = 365 days;
     uint256 defaultStartTime = block.timestamp + 1 days;
+    uint256 earlyExitPenalty = 2e17; // 20%
 
     function setUp() public virtual {
         merkle = new Merkle();

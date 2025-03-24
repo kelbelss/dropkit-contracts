@@ -55,11 +55,13 @@ contract DropKit is IDropKit, DropShares, Ownable {
 
     function createDrop(
         address token,
+        string memory tokenName,
+        string memory tokenSymbol,
         bytes32 merkleRoot,
-        uint256 totalAmount,
         uint256 earlyExitPenalty,
         uint256 startTimestamp,
-        uint256 vestingDuration
+        uint256 vestingDuration,
+        uint256 totalAmountToDrop
     ) public payable returns (uint256 dropID) {
         // assume the dropper is using their own token
 
@@ -76,25 +78,31 @@ contract DropKit is IDropKit, DropShares, Ownable {
         require(earlyExitPenalty <= MAX_EARLY_EXIT_PENALTY_ALLOWED, EarlyExitPenaltyTooHigh());
 
         // transfer token to this contract
-        token.safeTransferFrom(msg.sender, address(this), totalAmount);
+        token.safeTransferFrom(msg.sender, address(this), totalAmountToDrop);
 
         // create a new drop
-        Config memory config = Config({
+        DropConfig memory config = DropConfig({
+            dropCreator: msg.sender,
             token: token,
+            tokenName: tokenName,
+            tokenSymbol: tokenSymbol,
             merkleRoot: merkleRoot,
-            totalAmount: totalAmount,
             earlyExitPenalty: earlyExitPenalty,
             startTimestamp: startTimestamp,
             vestingDuration: vestingDuration
         });
 
+        DropVars memory vars =
+            DropVars({totalAssets: totalAmountToDrop, totalShares: totalAmountToDrop, totalSharesActivated: 0});
+
         // drop ID settings
         dropID = ++dropCount;
-        drops[dropID] = config;
-        dropCreator[dropID] = msg.sender;
+        dropConfigs[dropID] = config;
+        dropVars[dropID] = vars;
 
         // emit event
-        emit DropCreated(dropID, token, totalAmount, earlyExitPenalty, startTimestamp, vestingDuration);
+        // TODO: update event
+        emit DropCreated(dropID, token, totalAmountToDrop, earlyExitPenalty, startTimestamp, vestingDuration);
     }
 
     // RECIPIENT FUNCTIONS
@@ -106,7 +114,7 @@ contract DropKit is IDropKit, DropShares, Ownable {
     /// @param merkleProof The Merkle proof demonstrating the recipient's eligibility.
     /// @dev Emits a `DropActivated` event.
     function activateDrop(uint256 dropID, uint256 amount, bytes32[] memory merkleProof) public {
-        Config memory config = drops[dropID];
+        DropConfig memory config = dropConfigs[dropID];
         // storage for changing state?
         Recipient storage recipient = recipients[dropID][msg.sender];
 
@@ -147,7 +155,7 @@ contract DropKit is IDropKit, DropShares, Ownable {
     {
         // Check if the recipient is in the merkle tree
         bytes32 leaf = keccak256(abi.encodePacked(recipient, amount));
-        return MerkleProofLib.verify(merkleProof, drops[dropID].merkleRoot, leaf);
+        return MerkleProofLib.verify(merkleProof, dropConfigs[dropID].merkleRoot, leaf);
     }
 
     /// @notice Allows a recipient to withdraw airdropped tokens.
@@ -157,7 +165,7 @@ contract DropKit is IDropKit, DropShares, Ownable {
     /// @dev Emits an `AirdropTokensWithdrawn` event.
     function withdrawAirdropTokens(uint256 dropID, uint256 amountRequested) public {
         // TODO: calculate penalty amount and add to this function
-        Config memory config = drops[dropID];
+        DropConfig memory config = dropConfigs[dropID];
         // storage for changing state? TODO: who is calling this function if its internal?
         Recipient storage recipient = recipients[dropID][msg.sender];
 
@@ -215,7 +223,7 @@ contract DropKit is IDropKit, DropShares, Ownable {
     /// @return penalty The calculated penalty (scaled by 1e18).
     function _getPenalty(uint256 dropID, uint256 unvestedWithdrawalAmount) internal view returns (uint256 penalty) {
         // applies to claiming tokens when some are still unvested
-        penalty = (unvestedWithdrawalAmount * drops[dropID].earlyExitPenalty) / SCALE;
+        penalty = (unvestedWithdrawalAmount * dropConfigs[dropID].earlyExitPenalty) / SCALE;
     }
 
     /// @notice Calculates the amount of tokens that have vested for a recipient.
@@ -223,7 +231,7 @@ contract DropKit is IDropKit, DropShares, Ownable {
     /// @param userAmount The total amount of tokens the user is entitled to.
     /// @return vestedAmount The amount of tokens that have vested.
     function _getVestedAmount(uint256 dropID, uint256 userAmount) internal view returns (uint256 vestedAmount) {
-        Config memory config = drops[dropID];
+        DropConfig memory config = dropConfigs[dropID];
 
         uint256 vestedTime = _getVestedTime(dropID);
 
@@ -243,7 +251,7 @@ contract DropKit is IDropKit, DropShares, Ownable {
     /// @param dropID The ID of the airdrop.
     /// @return vestedTime The amount of time (in seconds) that has vested.
     function _getVestedTime(uint256 dropID) internal view returns (uint256 vestedTime) {
-        Config memory config = drops[dropID];
+        DropConfig memory config = dropConfigs[dropID];
 
         uint256 fullVestPeriod = config.startTimestamp + config.vestingDuration;
 

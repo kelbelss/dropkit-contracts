@@ -15,6 +15,5 @@ abstract contract Storage is Events, Errors, Constants {
 
     mapping(uint256 dropID => DropConfig) public dropConfigs;
     mapping(uint256 dropID => DropVars) public dropVars;
-    mapping(uint256 dropID => address) public dropCreator; // TODO should probably be in DropConfig
     mapping(uint256 dropID => mapping(address recipient => Recipient)) public recipients;
 }
