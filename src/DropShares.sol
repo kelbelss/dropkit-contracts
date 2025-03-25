@@ -13,12 +13,12 @@ abstract contract DropShares is Storage {
 
     /// @notice Returns the name of a drop, given its ID.
     function name(uint256 dropID) public view returns (string memory) {
-        return "TODO"; // TODO
+        return dropConfigs[dropID].tokenName; // TODO - check?
     }
 
     /// @notice Returns the symbol of a drop, given its ID.
     function symbol(uint256 dropID) public view returns (string memory) {
-        return "TODO"; // TODO
+        return dropConfigs[dropID].tokenSymbol; // TODO - check?
     }
 
     function decimals(uint256 dropID) public view returns (uint8) {

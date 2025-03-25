@@ -70,6 +70,9 @@ contract DropKit is IDropKit, DropShares, Ownable {
         // Require payment for drop creation
         require(msg.value == creationPrice, InsufficientPayment());
 
+        // Require token decimals to be 18
+        // TODO revert in createDrop if token decimals != 18. Only 18 decimals supported
+
         // Check that the start date is in the future
         require(startTimestamp >= block.timestamp, InvalidStartDate());
 
@@ -136,6 +139,7 @@ contract DropKit is IDropKit, DropShares, Ownable {
         recipient.hasActivatedDrop = true;
         recipient.totalAmountDropped = amount;
         recipient.totalAmountRemaining = amount;
+        DropVars[dropId].totalSharesActivated = amount;
 
         emit DropActivated(dropID, config.token, msg.sender, amount);
     }
@@ -164,23 +168,23 @@ contract DropKit is IDropKit, DropShares, Ownable {
     /// @param amountRequested The amount of tokens the recipient wants to withdraw.
     /// @dev Emits an `AirdropTokensWithdrawn` event.
     function withdrawAirdropTokens(uint256 dropID, uint256 amountRequested) public {
-        // TODO: calculate penalty amount and add to this function
         DropConfig memory config = dropConfigs[dropID];
         // storage for changing state? TODO: who is calling this function if its internal?
         Recipient storage recipient = recipients[dropID][msg.sender];
+        DropVars storage vars = dropVars[dropID];
 
         // Check if the recipient has not activated or already withdrawn
         require(recipient.hasActivatedDrop, NotActivated());
         require(recipient.totalAmountRemaining != 0, AlreadyWithdrawn());
 
-        uint256 recipientsAmountRemaining = recipient.totalAmountRemaining;
-
         // Check if the recipient has enough funds owed
-        require(amountRequested <= recipientsAmountRemaining, InsufficientFunds());
+        require(amountRequested <= recipient.totalAmountRemaining, InsufficientFunds());
 
         uint256 amountOut = _handleWithdrawals(dropID, amountRequested);
 
         recipient.totalAmountRemaining -= amountOut;
+        vars.totalAssets -= amountOut;
+        vars.totalShares -= amountRequested; // TODO adjust for exchange rate?
 
         // transfer tokens to the recipient
         config.token.safeTransfer(msg.sender, amountOut);
