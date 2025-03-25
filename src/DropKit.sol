@@ -139,7 +139,7 @@ contract DropKit is IDropKit, DropShares, Ownable {
         recipient.hasActivatedDrop = true;
         recipient.totalAmountDropped = amount;
         recipient.totalAmountRemaining = amount;
-        DropVars[dropId].totalSharesActivated = amount;
+        DropVars[dropID].totalSharesActivated = amount;
 
         emit DropActivated(dropID, config.token, msg.sender, amount);
     }
