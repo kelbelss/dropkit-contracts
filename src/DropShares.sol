@@ -21,7 +21,7 @@ abstract contract DropShares is Storage {
         return dropConfigs[dropID].tokenSymbol; // TODO - check?
     }
 
-    function decimals(uint256 dropID) public view returns (uint8) {
+    function decimals() public pure returns (uint8) {
         // TODO revert in createDrop if token decimals != 18. Only 18 decimals supported
         return 18;
     }
@@ -32,7 +32,9 @@ abstract contract DropShares is Storage {
     }
 
     /// @notice Returns an account's total (vested and unvested) balance of shares in a drop.
-    function balanceOf(uint256 dropID, address account) public view returns (uint256) {}
+    function balanceOf(uint256 dropID, address account) public view returns (uint256) {
+        return recipients[dropID][account].sharesRemaining;
+    }
 
     /// @notice Returns the total supply of shares of a drop.
     function totalSupply(uint256 dropID) public view returns (uint256) {}
@@ -51,13 +53,21 @@ abstract contract DropShares is Storage {
     }
 
     /// @notice Returns the maximum amount of the underlying ERC20 token that can be withdrawn by an account. Takes early exit penalty into account.
-    function maxWithdraw(uint256 dropID, address account) public view returns (uint256) {}
+    function maxWithdraw(uint256 dropID, address account) public view returns (uint256) {
+        // TODO
+    }
 
     // ------------------------------------------------------------ //
     //                     INTERNAL FUNCTIONS                       //
     // ------------------------------------------------------------ //
 
-    function _convertToShares(uint256 dropID, uint256 amount) internal view returns (uint256) {}
+    function _convertToShares(uint256 dropID, uint256 amount) internal view returns (uint256) {
+        // TODO account for 0 and decimals
+        return (amount * dropVars[dropID].totalShares) / dropVars[dropID].totalAssets;
+    }
 
-    function _convertToAsset(uint256 dropID, uint256 shares) internal view returns (uint256) {}
+    function _convertToAsset(uint256 dropID, uint256 shares) internal view returns (uint256) {
+        // TODO account for 0 and decimals
+        return (shares * dropVars[dropID].totalAssets) / dropVars[dropID].totalShares;
+    }
 }
