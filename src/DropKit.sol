@@ -76,7 +76,7 @@ contract DropKit is IDropKit, DropShares, Ownable {
         // Require payment for drop creation
         require(msg.value == creationPrice, InsufficientPayment());
 
-        // Require token decimals to be 18
+        // Require token decimals to be 18 - call decimal function on IERC20
         // TODO revert in createDrop if token decimals != 18. Only 18 decimals supported
 
         // Check that the start date is in the future
@@ -143,9 +143,9 @@ contract DropKit is IDropKit, DropShares, Ownable {
 
         // update the activated status and amount mapping
         recipient.hasActivatedDrop = true;
-        recipient.totalAmountDropped = amount;
-        recipient.totalAmountRemaining = amount;
-        dropVars[dropID].totalSharesActivated = amount;
+        recipient.sharesDropped = amount;
+        recipient.sharesRemaining = amount;
+        dropVars[dropID].totalSharesActivated += amount;
 
         emit DropActivated(dropID, config.token, msg.sender, amount);
     }
@@ -181,14 +181,14 @@ contract DropKit is IDropKit, DropShares, Ownable {
 
         // Check if the recipient has not activated or already withdrawn
         require(recipient.hasActivatedDrop, NotActivated());
-        require(recipient.totalAmountRemaining != 0, AlreadyWithdrawn());
+        require(recipient.sharesRemaining != 0, AlreadyWithdrawn());
 
         // Check if the recipient has enough funds owed
-        require(amountRequested <= recipient.totalAmountRemaining, InsufficientFunds());
+        require(amountRequested <= recipient.sharesRemaining, InsufficientFunds());
 
         uint256 amountOut = _handleWithdrawals(dropID, amountRequested);
 
-        recipient.totalAmountRemaining -= amountOut;
+        recipient.sharesRemaining -= amountOut;
         vars.totalAssets -= amountOut;
         vars.totalShares -= amountRequested; // TODO adjust for exchange rate?
 
@@ -207,10 +207,10 @@ contract DropKit is IDropKit, DropShares, Ownable {
     function _handleWithdrawals(uint256 dropID, uint256 amountRequested) internal returns (uint256 amountOut) {
         Recipient storage recipient = recipients[dropID][msg.sender];
 
-        uint256 vestedAmount = _getVestedAmount(dropID, recipient.totalAmountDropped);
+        uint256 vestedAmount = _getVestedAmount(dropID, recipient.sharesDropped);
 
         // users remaining balance - unvested balance
-        uint256 vestedBalanceAvailable = recipient.totalAmountRemaining - (recipient.totalAmountDropped - vestedAmount);
+        uint256 vestedBalanceAvailable = recipient.sharesRemaining - (recipient.sharesDropped - vestedAmount);
 
         // if recipient is withdrawing less than/equal to the balance that has vested, ie. no penalty
         if (amountRequested <= vestedBalanceAvailable) {
@@ -222,7 +222,7 @@ contract DropKit is IDropKit, DropShares, Ownable {
 
         uint256 penalty = _getPenalty(dropID, unvestedWithdrawalAmount);
 
-        recipient.totalAmountRemaining -= penalty;
+        recipient.sharesRemaining -= penalty;
 
         amountOut = vestedBalanceAvailable + unvestedWithdrawalAmount - penalty;
     }

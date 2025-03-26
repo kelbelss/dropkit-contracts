@@ -5,7 +5,7 @@ pragma solidity 0.8.28;
 struct DropConfig {
     address dropCreator;
     address token;
-    string tokenName;
+    string tokenName; // bottom
     string tokenSymbol;
     bytes32 merkleRoot;
     uint256 earlyExitPenalty;
@@ -21,7 +21,7 @@ struct DropVars {
 }
 
 struct Recipient {
-    uint256 totalAmountDropped;
-    uint256 totalAmountRemaining;
+    uint256 sharesDropped;
+    uint256 sharesRemaining;
     bool hasActivatedDrop;
 }
