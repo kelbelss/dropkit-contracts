@@ -12,6 +12,7 @@ abstract contract Storage is Events, Errors, Constants {
     uint256 public activationDeadline;
     uint256 public totalFees;
     uint256 public dropCount;
+    uint256 public claimFee;
 
     mapping(uint256 dropID => DropConfig) public dropConfigs;
     mapping(uint256 dropID => DropVars) public dropVars;

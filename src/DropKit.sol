@@ -45,9 +45,15 @@ contract DropKit is IDropKit, DropShares, Ownable {
         activationDeadline = newActivationDeadline;
     }
 
+    /// @notice Sets the global claim fee for recipient claims.
+    /// @dev Only callable by the contract owner.
+    function setClaimFee(uint256 newClaimFee) public payable onlyOwner {
+        claimFee = newClaimFee;
+    }
+
     /// @notice Allows the owner to claim fees collected by the contract.
     /// @dev Only callable by the contract owner.
-    function claimFees(address token) public payable onlyOwner {
+    function withdrawAdminFees() public payable onlyOwner {
         // TODO: MON - needs to account for creationFees and 10% penalty fees?
     }
 
