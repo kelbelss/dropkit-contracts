@@ -37,10 +37,14 @@ abstract contract DropShares is Storage {
     }
 
     /// @notice Returns the total supply of shares of a drop.
-    function totalSupply(uint256 dropID) public view returns (uint256) {}
+    function totalSupply(uint256 dropID) public view returns (uint256) {
+        return dropVars[dropID].totalShares;
+    }
 
     /// @notice Returns the total amount of the underlying ERC20 token held by a drop.
-    function totalAssets(uint256 dropID) public view returns (uint256) {}
+    function totalAssets(uint256 dropID) public view returns (uint256) {
+        return dropVars[dropID].totalAssets;
+    }
 
     /// @notice Converts an amount of a drop's underlying ERC20 token to its shares.
     function convertToShares(uint256 dropID, uint256 amount) public view returns (uint256) {
