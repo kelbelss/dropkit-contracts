@@ -71,13 +71,15 @@ contract DropKit is IDropKit, DropShares, Ownable {
     ) public payable returns (uint256 dropID) {
         // assume the dropper is using their own token
 
-        //TODO: maybe check if msg.value is MON?
+        // TODO implement feature where droppers can create a token
+        // TODO maybe check if msg.value is MON?
 
         // Require payment for drop creation
         require(msg.value == creationPrice, InsufficientPayment());
 
         // Require token decimals to be 18 - call decimal function on IERC20
         // TODO revert in createDrop if token decimals != 18. Only 18 decimals supported
+        // require(decimals == 18, MustHave18Decimals());
 
         // Check that the start date is in the future
         require(startTimestamp >= block.timestamp, InvalidStartDate());
@@ -158,12 +160,12 @@ contract DropKit is IDropKit, DropShares, Ownable {
         return _verifyMerkleProof(dropID, recipient, amount, merkleProof);
     }
 
+    // Check if the recipient is in the merkle tree
     function _verifyMerkleProof(uint256 dropID, address recipient, uint256 amount, bytes32[] memory merkleProof)
         internal
         view
         returns (bool)
     {
-        // Check if the recipient is in the merkle tree
         bytes32 leaf = keccak256(abi.encodePacked(recipient, amount));
         return MerkleProofLib.verify(merkleProof, dropConfigs[dropID].merkleRoot, leaf);
     }

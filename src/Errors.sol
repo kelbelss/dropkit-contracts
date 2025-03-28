@@ -5,6 +5,7 @@ abstract contract Errors {
     error TestError();
     error InsufficientPayment();
     error InvalidStartDate();
+    // error  MustHave18Decimals();
     error EarlyExitPenaltyTooLow();
     error EarlyExitPenaltyTooHigh();
     error FeeNotTransferred();
