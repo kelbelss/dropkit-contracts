@@ -170,12 +170,13 @@ contract DropKit is IDropKit, DropShares, Ownable {
         return MerkleProofLib.verify(merkleProof, dropConfigs[dropID].merkleRoot, leaf);
     }
 
-    /// @notice Allows a recipient to withdraw airdropped tokens.
+    /// @notice Allows a recipient to withdraw airdrop.
     /// @dev Calculates vested and unvested amounts, applies penalties for early withdrawals of unvested tokens, and transfers the tokens.
     /// @param dropID The ID of the airdrop to withdraw from.
-    /// @param amountRequested The amount of tokens the recipient wants to withdraw.
+    /// @param sharesRequested The amount of shares the recipient wants to convert to withdraw.
     /// @dev Emits an `AirdropTokensWithdrawn` event.
-    function withdrawAirdropTokens(uint256 dropID, uint256 amountRequested) public {
+    function withdraw(uint256 dropID, uint256 sharesRequested) public returns (uint256) {
+        //shares
         DropConfig memory config = dropConfigs[dropID];
         // storage for changing state? TODO: who is calling this function if its internal?
         Recipient storage recipient = recipients[dropID][msg.sender];
@@ -186,27 +187,31 @@ contract DropKit is IDropKit, DropShares, Ownable {
         require(recipient.sharesRemaining != 0, AlreadyWithdrawn());
 
         // Check if the recipient has enough funds owed
-        require(amountRequested <= recipient.sharesRemaining, InsufficientFunds());
+        require(sharesRequested <= recipient.sharesRemaining, InsufficientFunds());
 
-        uint256 amountOut = _handleWithdrawals(dropID, amountRequested);
+        // TODO this needs to be converted to the asset value, not the share value
+        uint256 sharesWithdrawn = _handleWithdrawals(dropID, sharesRequested);
 
-        recipient.sharesRemaining -= amountOut;
-        vars.totalAssets -= amountOut;
-        vars.totalShares -= amountRequested; // TODO adjust for exchange rate?
+        uint256 assetsWithdrawn = convertToAsset(dropID, sharesWithdrawn);
+
+        recipient.sharesRemaining -= sharesRequested;
+        vars.totalAssets -= assetsWithdrawn;
+        vars.totalShares -= sharesRequested;
 
         // transfer tokens to the recipient
-        config.token.safeTransfer(msg.sender, amountOut);
+        config.token.safeTransfer(msg.sender, assetsWithdrawn);
+        emit AirdropTokensWithdrawn(dropID, msg.sender, sharesWithdrawn);
 
-        emit AirdropTokensWithdrawn(dropID, msg.sender, amountOut);
+        return assetsWithdrawn;
     }
 
     // INTERNAL FUNCTIONS
 
     /// @notice Internal function to handle withdrawal logic, including penalty calculation.
     /// @param dropID The ID of the airdrop.
-    /// @param amountRequested The amount the user wants to withdraw.
+    /// @param sharesRequested The amount the user wants to withdraw.
     /// @return amountOut The actual amount withdrawn after penalties are applied.
-    function _handleWithdrawals(uint256 dropID, uint256 amountRequested) internal returns (uint256 amountOut) {
+    function _handleWithdrawals(uint256 dropID, uint256 sharesRequested) internal returns (uint256 amountOut) {
         Recipient storage recipient = recipients[dropID][msg.sender];
 
         uint256 vestedAmount = _getVestedAmount(dropID, recipient.sharesDropped);
@@ -215,12 +220,12 @@ contract DropKit is IDropKit, DropShares, Ownable {
         uint256 vestedBalanceAvailable = recipient.sharesRemaining - (recipient.sharesDropped - vestedAmount);
 
         // if recipient is withdrawing less than/equal to the balance that has vested, ie. no penalty
-        if (amountRequested <= vestedBalanceAvailable) {
-            return amountRequested;
+        if (sharesRequested <= vestedBalanceAvailable) {
+            return sharesRequested;
         }
 
         // if recipient is withdrawing more than the balance that has vested
-        uint256 unvestedWithdrawalAmount = amountRequested - vestedBalanceAvailable;
+        uint256 unvestedWithdrawalAmount = sharesRequested - vestedBalanceAvailable;
 
         uint256 penalty = _getPenalty(dropID, unvestedWithdrawalAmount);
 
