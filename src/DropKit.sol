@@ -275,6 +275,4 @@ contract DropKit is IDropKit, DropShares, Ownable {
         // partially vested - time since the start
         vestedTime = block.timestamp - config.startTimestamp;
     }
-
-    // TODO: track balances
 }
