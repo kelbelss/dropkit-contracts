@@ -51,6 +51,10 @@ contract DropKit is IDropKit, DropShares, Ownable {
         claimFee = newClaimFee;
     }
 
+    function setAdminPenaltyFee(uint256 newAdminPenaltyFee) public onlyOwner {
+        adminPenaltyFee = newAdminPenaltyFee;
+    }
+
     /// @notice Allows the owner to claim fees collected by the contract.
     /// @dev Only callable by the contract owner.
     function withdrawAdminFees() public payable onlyOwner {
@@ -103,8 +107,12 @@ contract DropKit is IDropKit, DropShares, Ownable {
             vestingDuration: vestingDuration
         });
 
-        DropVars memory vars =
-            DropVars({totalAssets: totalAmountToDrop, totalShares: totalAmountToDrop, totalSharesActivated: 0});
+        DropVars memory vars = DropVars({
+            totalAssets: totalAmountToDrop,
+            totalShares: totalAmountToDrop,
+            totalSharesActivated: 0,
+            dropKitFees: 0
+        });
 
         // drop ID settings
         dropID = ++dropCount;
@@ -175,7 +183,7 @@ contract DropKit is IDropKit, DropShares, Ownable {
     /// @param dropID The ID of the airdrop to withdraw from.
     /// @param sharesRequested The amount of shares the recipient wants to convert to withdraw.
     /// @dev Emits an `AirdropTokensWithdrawn` event.
-    function withdraw(uint256 dropID, uint256 sharesRequested) public returns (uint256) {
+    function withdraw(uint256 dropID, uint256 sharesRequested) public returns (uint256 assetsWithdrawn) {
         //shares
         DropConfig memory config = dropConfigs[dropID];
         // storage for changing state? TODO: who is calling this function if its internal?
@@ -192,7 +200,7 @@ contract DropKit is IDropKit, DropShares, Ownable {
         // TODO this needs to be converted to the asset value, not the share value
         uint256 sharesWithdrawn = _handleWithdrawals(dropID, sharesRequested);
 
-        uint256 assetsWithdrawn = convertToAsset(dropID, sharesWithdrawn);
+        assetsWithdrawn = convertToAsset(dropID, sharesWithdrawn);
 
         recipient.sharesRemaining -= sharesRequested;
         vars.totalAssets -= assetsWithdrawn;
@@ -200,9 +208,7 @@ contract DropKit is IDropKit, DropShares, Ownable {
 
         // transfer tokens to the recipient
         config.token.safeTransfer(msg.sender, assetsWithdrawn);
-        emit AirdropTokensWithdrawn(dropID, msg.sender, sharesWithdrawn);
-
-        return assetsWithdrawn;
+        emit AirdropTokensWithdrawn(dropID, msg.sender, sharesWithdrawn); // TODO update event emitted
     }
 
     // INTERNAL FUNCTIONS
@@ -213,6 +219,7 @@ contract DropKit is IDropKit, DropShares, Ownable {
     /// @return amountOut The actual amount withdrawn after penalties are applied.
     function _handleWithdrawals(uint256 dropID, uint256 sharesRequested) internal returns (uint256 amountOut) {
         Recipient storage recipient = recipients[dropID][msg.sender];
+        DropVars storage vars = dropVars[dropID];
 
         uint256 vestedAmount = _getVestedAmount(dropID, recipient.sharesDropped);
 
@@ -228,8 +235,11 @@ contract DropKit is IDropKit, DropShares, Ownable {
         uint256 unvestedWithdrawalAmount = sharesRequested - vestedBalanceAvailable;
 
         uint256 penalty = _getPenalty(dropID, unvestedWithdrawalAmount);
-
         recipient.sharesRemaining -= penalty;
+
+        uint256 adminFee = _adminPenaltyFeeCalculation(dropID, unvestedWithdrawalAmount);
+        vars.dropKitFees += adminFee;
+        vars.totalAssets -= adminFee;
 
         amountOut = vestedBalanceAvailable + unvestedWithdrawalAmount - penalty;
     }
@@ -241,6 +251,16 @@ contract DropKit is IDropKit, DropShares, Ownable {
     function _getPenalty(uint256 dropID, uint256 unvestedWithdrawalAmount) internal view returns (uint256 penalty) {
         // applies to claiming tokens when some are still unvested
         penalty = (unvestedWithdrawalAmount * dropConfigs[dropID].earlyExitPenalty) / SCALE;
+    }
+
+    function _adminPenaltyFeeCalculation(uint256 dropID, uint256 unvestedWithdrawalAmount)
+        internal
+        view
+        returns (uint256 adminFeeInAssets)
+    {
+        uint256 totalPenalty = _getPenalty(dropID, unvestedWithdrawalAmount);
+        uint256 adminFeeShares = (totalPenalty * adminPenaltyFee) / SCALE;
+        adminFeeInAssets = convertToAsset(dropID, adminFeeShares);
     }
 
     /// @notice Calculates the amount of tokens that have vested for a recipient.

@@ -18,6 +18,7 @@ struct DropVars {
     uint256 totalAssets;
     uint256 totalShares;
     uint256 totalSharesActivated;
+    uint256 dropKitFees;
 }
 
 struct Recipient {
