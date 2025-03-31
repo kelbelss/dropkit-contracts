@@ -50,9 +50,11 @@ contract TestDropKit is BaseTest {
             uint256 duration
         ) = dropKit.dropConfigs(dropID);
 
+        assertEq(creator, DROP_CREATOR);
         assertEq(token, address(mockToken));
+        assertEq(name, tokenName);
+        assertEq(symbol, tokenSymbol);
         assertEq(root, merkleRoot);
-        // assertEq(total, totalDropAmount);
         assertEq(penalty, earlyExitPenalty);
         assertEq(start, defaultStartTime);
         assertEq(duration, 30 days);

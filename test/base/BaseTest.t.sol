@@ -42,6 +42,7 @@ contract BaseTest is Test {
         dropKit.setActivationDeadline(defaultActivationDeadline);
         dropKit.setCreationPrice(2 ether);
         dropKit.setMinEarlyExitPenalty(1e17);
+        dropKit.setAdminPenaltyFee(1e17);
         vm.stopPrank();
 
         // Build Merkle proof and claim data
