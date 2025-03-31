@@ -30,6 +30,7 @@ contract BaseTest is Test {
     string tokenSymbol = "TT";
     uint256 defaultActivationDeadline = 365 days;
     uint256 defaultStartTime = block.timestamp + 1 days;
+    uint256 defaultDuration = 30 days;
     uint256 earlyExitPenalty = 2e17; // 20%
 
     function setUp() public virtual {

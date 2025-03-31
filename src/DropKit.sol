@@ -235,7 +235,6 @@ contract DropKit is IDropKit, DropShares, Ownable {
         uint256 unvestedWithdrawalAmount = sharesRequested - vestedBalanceAvailable;
 
         uint256 penalty = _getPenalty(dropID, unvestedWithdrawalAmount);
-        recipient.sharesRemaining -= penalty;
 
         uint256 adminFee = _adminPenaltyFeeCalculation(dropID, unvestedWithdrawalAmount);
         vars.dropKitFees += adminFee;

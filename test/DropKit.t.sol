@@ -32,7 +32,7 @@ contract TestDropKit is BaseTest {
             merkleRoot,
             earlyExitPenalty,
             defaultStartTime,
-            30 days,
+            defaultDuration,
             totalDropAmount
         );
 
@@ -57,7 +57,7 @@ contract TestDropKit is BaseTest {
         assertEq(root, merkleRoot);
         assertEq(penalty, earlyExitPenalty);
         assertEq(start, defaultStartTime);
-        assertEq(duration, 30 days);
+        assertEq(duration, defaultDuration);
 
         assertEq(mockToken.balanceOf(address(dropKit)), totalDropAmount);
     }
@@ -75,7 +75,7 @@ contract TestDropKit is BaseTest {
             merkleRoot,
             earlyExitPenalty,
             defaultStartTime,
-            30 days,
+            defaultDuration,
             totalDropAmount
         );
         vm.stopPrank();
@@ -125,7 +125,7 @@ contract TestDropKit is BaseTest {
         dropKit.activateDrop(dropID, bobAmount, proof);
         // vm.stopPrank();
 
-        vm.warp(defaultStartTime + 80 days);
+        vm.warp(defaultStartTime + 20 days);
         // total is 1000e18, bob has 300e18
 
         // withdraw airdrop tokens
