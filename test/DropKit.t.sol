@@ -127,7 +127,7 @@ contract TestDropKit is BaseTest {
         // total is 1000e18, bob has 300e18
 
         // withdraw airdrop tokens
-        dropKit.withdrawAirdropTokens(dropID, bobAmount);
+        dropKit.withdraw(dropID, bobAmount);
 
         vm.stopPrank();
 
