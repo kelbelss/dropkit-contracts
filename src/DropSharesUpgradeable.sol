@@ -3,6 +3,8 @@ pragma solidity 0.8.28;
 
 import {Storage} from "./Storage.sol";
 
+// NEEDS TO BE UPGRADEABLE TOO
+
 /// @title DropShares
 /// @author
 /// @notice The logic and functions related to the ERC-4626 style vault shares of drops.
