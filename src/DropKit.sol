@@ -57,8 +57,13 @@ contract DropKit is IDropKit, DropShares, Ownable {
 
     /// @notice Allows the owner to claim fees collected by the contract.
     /// @dev Only callable by the contract owner.
-    function withdrawAdminFees() public payable onlyOwner {
-        // TODO: MON - needs to account for creationFees and 10% penalty fees?
+    function withdrawAdminFees(uint256 dropID) public payable onlyOwner {
+        // TODO: drop specific - needs to account for 10% penalty fees?
+        feeBalance = dropVars[dropID].dropKitFees;
+    }
+
+    function withdrawCreationFees() public payable onlyOwner {
+        // TODO: MON - 2 mon per drop created
     }
 
     // DROPPER FUNCTIONS
