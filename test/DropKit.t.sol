@@ -125,7 +125,7 @@ contract TestDropKit is BaseTest {
         dropKit.activateDrop(dropID, bobAmount, proof);
         // vm.stopPrank();
 
-        vm.warp(defaultStartTime + 20 days);
+        vm.warp(defaultStartTime + 100 days);
         // total is 1000e18, bob has 300e18
 
         // withdraw airdrop tokens
@@ -142,5 +142,9 @@ contract TestDropKit is BaseTest {
         console.log("Bob's balance is: ", mockToken.balanceOf(address(BOB)));
         assertEq(hasActivatedDrop, true);
         console.log("dropkit balance", mockToken.balanceOf(address(dropKit)));
+
+        (,,, uint256 dropKitFees) = dropKit.dropVars(dropID);
+
+        console.log("DropKit fees collected are:", dropKitFees);
     }
 }
