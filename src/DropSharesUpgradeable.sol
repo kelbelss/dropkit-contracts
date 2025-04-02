@@ -76,4 +76,6 @@ abstract contract DropShares is Storage {
         // TODO account for 0 and decimals
         return (shares * dropVars[dropID].totalAssets) / dropVars[dropID].totalShares;
     }
+
+    uint256[50] private __gap;
 }
