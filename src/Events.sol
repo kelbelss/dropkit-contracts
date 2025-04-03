@@ -3,6 +3,11 @@ pragma solidity 0.8.28;
 
 abstract contract Events {
     event TestEvent();
+    event MinEarlyExitPenaltySet(uint256 newMinEarlyExitPenalty);
+    event CreationPriceSet(uint256 newCreationPrice);
+    event ActivationDeadlineSet(uint256 newActivationDeadline);
+    event ClaimFeeSet(uint256 newClaimFee);
+    event AdminFeesWithdrawn(uint256 dropID, address recipient, address tokenAddr, uint256 feesToWithdraw);
     event DropCreated(
         uint256 indexed dropID,
         address indexed token,

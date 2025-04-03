@@ -67,7 +67,7 @@ contract DropKit is Initializable, OwnableUpgradeable, IDropKit, DropShares {
     /// @param newCreationPrice The new creation price for airdrops.
     function setCreationPrice(uint256 newCreationPrice) public override onlyOwner {
         creationPrice = newCreationPrice;
-        emit CreationPriceSet(newCreationPrice, monTokenAddress);
+        emit CreationPriceSet(newCreationPrice);
     }
 
     /// @notice Sets the global claim deadline for airdrops.
@@ -82,12 +82,11 @@ contract DropKit is Initializable, OwnableUpgradeable, IDropKit, DropShares {
     /// @dev Only callable by the contract owner.
     function setClaimFee(uint256 newClaimFee) public override onlyOwner {
         claimFee = newClaimFee;
-        emit ClaimFeeSet(newClaimFee, monTokenAddress);
+        emit ClaimFeeSet(newClaimFee);
     }
 
     function setAdminPenaltyFee(uint256 newAdminPenaltyFee) public override onlyOwner {
         adminPenaltyFee = newAdminPenaltyFee;
-        emit MonTokenAddressSet(_monTokenAddress);
     }
 
     /// @notice Allows the owner to claim fees collected by the contract.
@@ -113,13 +112,6 @@ contract DropKit is Initializable, OwnableUpgradeable, IDropKit, DropShares {
     function withdrawCreationFees(address recipient) public payable onlyOwner {
         // TODO: MON - 2 mon per drop created
         require(recipient != address(0), "ZeroAddress"); // TODO
-    }
-
-    // mon token address
-    function setMonTokenAddress(address _monTokenAddress) public onlyOwner {
-        require(_monTokenAddress != address(0), "ZeroAddress");
-        monTokenAddress = _monTokenAddress;
-        // Emit event
     }
 
     // DROPPER FUNCTIONS
