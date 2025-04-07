@@ -19,7 +19,7 @@ import "forge-std/Test.sol";
 /// @title DropKit (Transparent Proxy Implementation)
 /// @author kelbels
 /// @notice Logic contract for an upgradeable airdrop system using the Transparent Proxy Pattern.
-/// @dev Handles ERC20 token drops with vesting. Creation and claim fees are paid in the native chain token (e.g., MON/ETH).
+/// @dev Handles ERC20 token drops with vesting. Creation and claim fees are paid in the native chain token.
 ///      Must be deployed behind a TransparentUpgradeableProxy managed by a ProxyAdmin.
 contract DropKit is Initializable, OwnableUpgradeable, IDropKit, DropShares {
     using SafeTransferLib for address;
@@ -109,7 +109,7 @@ contract DropKit is Initializable, OwnableUpgradeable, IDropKit, DropShares {
         emit AdminFeesWithdrawn(dropID, recipient, tokenAddr, feesToWithdraw);
     }
 
-    function withdrawCreationFees(address recipient) public payable onlyOwner {
+    function withdrawCreationFees(address payable recipient) public payable onlyOwner {
         // TODO: MON - 2 mon per drop created
         require(recipient != address(0), "ZeroAddress"); // TODO
     }
@@ -266,7 +266,7 @@ contract DropKit is Initializable, OwnableUpgradeable, IDropKit, DropShares {
     /// @notice Internal function to handle withdrawal logic, including penalty calculation.
     /// @param dropID The ID of the airdrop.
     /// @param sharesRequested The amount the user wants to withdraw.
-    /// @return amountOut The actual amount withdrawn after penalties are applied.
+    /// @return sharesOut The actual amount withdrawn after penalties are applied.
     function _calculateSharesToWithdraw(uint256 dropID, address recipientAddr, uint256 sharesRequested)
         internal
         returns (uint256 sharesOut)
