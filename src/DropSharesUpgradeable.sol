@@ -2,13 +2,22 @@
 pragma solidity 0.8.28;
 
 import {Storage} from "./Storage.sol";
+import {Initializable} from "openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 // NEEDS TO BE UPGRADEABLE TOO
 
 /// @title DropShares
 /// @author
 /// @notice The logic and functions related to the ERC-4626 style vault shares of drops.
-abstract contract DropShares is Storage {
+abstract contract DropShares is Initializable, Storage {
+    constructor() {
+        _disableInitializers();
+    }
+
+    function __DropShares_init() internal onlyInitializing {
+        // If Storage needs an initializer, call it here: __Storage_init_unchained(); (assuming Storage is made upgradeable too)
+    }
+
     // ------------------------------------------------------------ //
     //                     EXTERNAL FUNCTIONS                       //
     // ------------------------------------------------------------ //

@@ -23,7 +23,6 @@ import "forge-std/Test.sol";
 ///      Must be deployed behind a TransparentUpgradeableProxy managed by a ProxyAdmin.
 contract DropKit is Initializable, OwnableUpgradeable, IDropKit, DropShares {
     using SafeTransferLib for address;
-    using SafeTransferLib for IERC20;
 
     constructor() {
         _disableInitializers();
@@ -43,7 +42,7 @@ contract DropKit is Initializable, OwnableUpgradeable, IDropKit, DropShares {
         // --- Initialize Inherited Contracts ---
         __Ownable_init(initialOwner);
         // IMPORTANT: Call the initializer for DropShares - adjust args
-        // __DropShares_init(/* pass args needed by DropShares initializer */);
+        __DropShares_init();
 
         setMinEarlyExitPenalty(_initialMinEarlyExitPenalty);
         setCreationPrice(_initialCreationPrice);
@@ -104,7 +103,7 @@ contract DropKit is Initializable, OwnableUpgradeable, IDropKit, DropShares {
 
         vars.dropKitFees = 0;
 
-        IERC20(tokenAddr).safeTransfer(recipient, feesToWithdraw);
+        tokenAddr.safeTransfer(recipient, feesToWithdraw);
 
         emit AdminFeesWithdrawn(dropID, recipient, tokenAddr, feesToWithdraw);
     }
