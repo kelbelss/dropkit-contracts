@@ -9,7 +9,7 @@ import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {MerkleProofLib} from "solady/utils/MerkleProofLib.sol";
 
-import {DropShares} from "./DropSharesUpgradeable.sol";
+import {DropShares} from "./DropShares.sol";
 import {DropConfig, DropVars, Recipient} from "./Types.sol";
 import {IDropKit} from "./interfaces/IDropKit.sol";
 
