@@ -22,10 +22,10 @@ contract TestDropKit is BaseTest {
         vm.startPrank(DROP_CREATOR);
 
         // Approve dropkit contract to transfer creator tokens
-        mockToken.approve(address(dropKit), totalDropAmount);
+        mockToken.approve(address(iDropKit), totalDropAmount);
 
         // Create a drop
-        dropID = dropKit.createDrop{value: 2 ether}(
+        dropID = iDropKit.createDrop{value: 2 ether}(
             address(mockToken),
             tokenName,
             tokenSymbol,
@@ -59,16 +59,16 @@ contract TestDropKit is BaseTest {
         assertEq(start, defaultStartTime);
         assertEq(duration, defaultDuration);
 
-        assertEq(mockToken.balanceOf(address(dropKit)), totalDropAmount);
+        assertEq(mockToken.balanceOf(address(iDropKit)), totalDropAmount);
     }
 
     function test_DropKit_activateDrop() public {
         // Create a drop
         vm.startPrank(DROP_CREATOR);
         // Approve dropkit contract to transfer creator tokens
-        mockToken.approve(address(dropKit), totalDropAmount);
+        mockToken.approve(address(iDropKit), totalDropAmount);
         // Create a drop
-        dropID = dropKit.createDrop{value: 2 ether}(
+        dropID = iDropKit.createDrop{value: 2 ether}(
             address(mockToken),
             tokenName,
             tokenSymbol,
@@ -102,9 +102,9 @@ contract TestDropKit is BaseTest {
         // Create a drop
         vm.startPrank(DROP_CREATOR);
         // Approve dropkit contract to transfer creator tokens
-        mockToken.approve(address(dropKit), totalDropAmount);
+        mockToken.approve(address(iDropKit), totalDropAmount);
         // Create a drop
-        dropID = dropKit.createDrop{value: 2 ether}(
+        dropID = iDropKit.createDrop{value: 2 ether}(
             address(mockToken),
             tokenName,
             tokenSymbol,
@@ -129,7 +129,7 @@ contract TestDropKit is BaseTest {
         // total is 1000e18, bob has 300e18
 
         // withdraw airdrop tokens
-        dropKit.withdraw(dropID, bobAmount);
+        iDropKit.withdraw(dropID, bobAmount);
 
         vm.stopPrank();
 
@@ -141,7 +141,7 @@ contract TestDropKit is BaseTest {
         assertEq(totalAmountRemaining, 0);
         console.log("Bob's balance is: ", mockToken.balanceOf(address(BOB)));
         assertEq(hasActivatedDrop, true);
-        console.log("dropkit balance", mockToken.balanceOf(address(dropKit)));
+        console.log("dropkit balance", mockToken.balanceOf(address(iDropKit)));
 
         (,,, uint256 dropKitFees) = dropKit.dropVars(dropID);
 
