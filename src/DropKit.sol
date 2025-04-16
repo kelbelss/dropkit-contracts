@@ -33,7 +33,6 @@ contract DropKit is Initializable, OwnableUpgradeable, IDropKit, DropShares {
         uint256 _initialMinEarlyExitPenalty,
         uint256 _initialCreationPrice,
         uint256 _initialActivationDeadline,
-        uint256 _initialClaimFee,
         uint256 _initialAdminPenaltyFee
     ) public initializer {
         // Use the initializer modifier
@@ -47,7 +46,6 @@ contract DropKit is Initializable, OwnableUpgradeable, IDropKit, DropShares {
         setMinEarlyExitPenalty(_initialMinEarlyExitPenalty);
         setCreationPrice(_initialCreationPrice);
         setActivationDeadline(_initialActivationDeadline);
-        setClaimFee(_initialClaimFee);
         setAdminPenaltyFee(_initialAdminPenaltyFee);
     }
 
@@ -79,10 +77,10 @@ contract DropKit is Initializable, OwnableUpgradeable, IDropKit, DropShares {
 
     /// @notice Sets the global claim fee for recipient claims.
     /// @dev Only callable by the contract owner.
-    function setClaimFee(uint256 newClaimFee) public override onlyOwner {
-        claimFee = newClaimFee;
-        emit ClaimFeeSet(newClaimFee);
-    }
+    // function setClaimFee(uint256 newClaimFee) public override onlyOwner {
+    //     claimFee = newClaimFee;
+    //     emit ClaimFeeSet(newClaimFee);
+    // }
 
     function setAdminPenaltyFee(uint256 newAdminPenaltyFee) public override onlyOwner {
         adminPenaltyFee = newAdminPenaltyFee;
