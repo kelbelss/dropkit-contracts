@@ -2,6 +2,19 @@
 pragma solidity 0.8.28;
 
 interface IDropKit {
+    /// @notice Initializes the DropKit contract (used for proxy deployments).
+    /// @param gov Address of the governance/admin.
+    /// @param minEarlyExitPenalty Minimum early exit penalty.
+    /// @param creationPrice Price to create a new drop.
+    /// @param activationDeadline Default activation deadline.
+    /// @param adminPenaltyFee Portion of penalties allocated to admin.
+    function initialize(
+        address gov,
+        uint256 minEarlyExitPenalty,
+        uint256 creationPrice,
+        uint256 activationDeadline,
+        uint256 adminPenaltyFee
+    ) external;
     /// @notice Sets the minimum allowed early exit penalty.
     /// @param newMinEarlyExitPenalty The new minimum early exit penalty (scaled by 1e18).
     function setMinEarlyExitPenalty(uint256 newMinEarlyExitPenalty) external;
@@ -16,7 +29,7 @@ interface IDropKit {
 
     /// @notice Sets the global claim fee for recipient claims.
     /// @param newClaimFee The new claim fee.
-    function setClaimFee(uint256 newClaimFee) external;
+    // function setClaimFee(uint256 newClaimFee) external;
 
     /// @notice Sets the percentage of the penalty fee that goes to the admin/owner.
     /// @param newAdminPenaltyFee The new admin penalty fee share (scaled by SCALE).
