@@ -24,12 +24,12 @@ abstract contract DropShares is Initializable, Storage {
 
     /// @notice Returns the name of a drop, given its ID.
     function name(uint256 dropID) public view returns (string memory) {
-        return dropConfigs[dropID].tokenName; // TODO - check?
+        return dropConfigs[dropID].tokenName;
     }
 
     /// @notice Returns the symbol of a drop, given its ID.
     function symbol(uint256 dropID) public view returns (string memory) {
-        return dropConfigs[dropID].tokenSymbol; // TODO - check?
+        return dropConfigs[dropID].tokenSymbol;
     }
 
     function decimals() public pure returns (uint8) {
