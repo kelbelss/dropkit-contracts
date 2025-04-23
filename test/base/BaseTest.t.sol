@@ -40,6 +40,7 @@ contract BaseTest is Test {
     uint256 earlyExitPenalty = 2e17; // 20%
 
     function setUp() public virtual {
+        merkle = new Merkle();
         // deploy DropKit implementation
         dropKit = new DropKit();
         // deploy ProxyAdmin
@@ -49,7 +50,7 @@ contract BaseTest is Test {
 
         // encode initializer call for DropKit
         bytes memory initData = abi.encodeWithSelector(
-            iDropKit.initialize.selector,
+            IDropKit.initialize.selector,
             GOV,
             0.1e17, // minEarlyExitPenalty
             2 ether, // creationPrice
@@ -69,6 +70,8 @@ contract BaseTest is Test {
         // Build Merkle proof and claim data
         _buildHashedMerkleItems();
         _buildMerkleRootFromHashedMerkleItems();
+
+        vm.stopPrank();
     }
 
     function _buildHashedMerkleItems() internal {
