@@ -48,7 +48,7 @@ contract TestDropKit is BaseTest {
             uint256 penalty,
             uint256 start,
             uint256 duration
-        ) = iDropKit.dropConfigs(dropID);
+        ) = DropKit(address(proxy)).dropConfigs(dropID);
 
         assertEq(creator, DROP_CREATOR);
         assertEq(token, address(mockToken));
@@ -91,8 +91,7 @@ contract TestDropKit is BaseTest {
 
         // Check recipient details are set
         (uint256 totalAmountDropped, uint256 totalAmountRemaining, bool hasActivatedDrop) =
-            dropKit.recipients(dropID, address(BOB));
-
+            DropKit(address(proxy)).recipients(dropID, address(BOB));
         assertEq(totalAmountDropped, bobAmount);
         assertEq(totalAmountRemaining, bobAmount);
         assertEq(hasActivatedDrop, true);
@@ -129,22 +128,27 @@ contract TestDropKit is BaseTest {
         // total is 1000e18, bob has 300e18
 
         // withdraw airdrop tokens
-        iDropKit.withdraw(dropID, bobAmount);
+        uint256 withdrawnAmount = iDropKit.withdraw(dropID, bobAmount);
 
         vm.stopPrank();
 
         // Check recipient details
         (uint256 totalAmountDropped, uint256 totalAmountRemaining, bool hasActivatedDrop) =
-            dropKit.recipients(dropID, address(BOB));
+            DropKit(address(proxy)).recipients(dropID, address(BOB));
 
         assertEq(totalAmountDropped, bobAmount);
         assertEq(totalAmountRemaining, 0);
-        console.log("Bob's balance is: ", mockToken.balanceOf(address(BOB)));
         assertEq(hasActivatedDrop, true);
-        console.log("dropkit balance", mockToken.balanceOf(address(iDropKit)));
 
-        (,,, uint256 dropKitFees) = dropKit.dropVars(dropID);
+        (,,, uint256 dropKitFees) = DropKit(address(proxy)).dropVars(dropID);
 
         console.log("DropKit fees collected are:", dropKitFees);
+        console.log("Bob's token balance is: ", mockToken.balanceOf(address(BOB)));
+        console.log("Proxy's token balance", mockToken.balanceOf(address(iDropKit)));
+        console.log("DropKit fees collected are:", dropKitFees);
+
+        assertEq(withdrawnAmount, bobAmount, "withdraw() return value mismatch");
+        assertEq(mockToken.balanceOf(address(BOB)), bobAmount, "Bob final token balance mismatch");
+        assertEq(dropKitFees, 0, "Admin fees should be 0 with no penalty");
     }
 }
