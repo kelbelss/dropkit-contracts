@@ -48,7 +48,7 @@ contract TestDropKit is BaseTest {
             uint256 penalty,
             uint256 start,
             uint256 duration
-        ) = dropKit.dropConfigs(dropID);
+        ) = iDropKit.dropConfigs(dropID);
 
         assertEq(creator, DROP_CREATOR);
         assertEq(token, address(mockToken));
@@ -86,7 +86,7 @@ contract TestDropKit is BaseTest {
         bytes32[] memory proof = getMerkleProof(address(BOB), bobAmount);
 
         // activate drop
-        dropKit.activateDrop(dropID, bobAmount, proof);
+        iDropKit.activateDrop(dropID, bobAmount, proof);
         vm.stopPrank();
 
         // Check recipient details are set
@@ -122,7 +122,7 @@ contract TestDropKit is BaseTest {
         bytes32[] memory proof = getMerkleProof(address(BOB), bobAmount);
 
         // activate drop
-        dropKit.activateDrop(dropID, bobAmount, proof);
+        iDropKit.activateDrop(dropID, bobAmount, proof);
         // vm.stopPrank();
 
         vm.warp(defaultStartTime + 100 days);
