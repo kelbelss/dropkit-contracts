@@ -11,7 +11,6 @@ abstract contract Storage is Events, Errors, Constants {
     uint256 public creationPrice;
     uint256 public activationDeadline;
     uint256 public dropCount;
-    uint256 public claimFee;
     uint256 public adminPenaltyFee;
     uint256 public totalMonCreationFeesCollected;
 

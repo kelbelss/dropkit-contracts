@@ -4,7 +4,6 @@ pragma solidity 0.8.28;
 import {Initializable} from "openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {OwnableUpgradeable} from "openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-// import {Ownable} from "openzeppelin/contracts/access/Ownable.sol";
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {MerkleProofLib} from "solady/utils/MerkleProofLib.sol";
@@ -74,13 +73,6 @@ contract DropKit is Initializable, OwnableUpgradeable, IDropKit, DropShares {
         activationDeadline = newActivationDeadline;
         emit ActivationDeadlineSet(newActivationDeadline);
     }
-
-    /// @notice Sets the global claim fee for recipient claims.
-    /// @dev Only callable by the contract owner.
-    // function setClaimFee(uint256 newClaimFee) public override onlyOwner {
-    //     claimFee = newClaimFee;
-    //     emit ClaimFeeSet(newClaimFee);
-    // }
 
     function setAdminPenaltyFee(uint256 newAdminPenaltyFee) public override onlyOwner {
         adminPenaltyFee = newAdminPenaltyFee;
