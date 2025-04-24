@@ -147,8 +147,8 @@ contract TestDropKit is BaseTest {
         console.log("Proxy's token balance", mockToken.balanceOf(address(iDropKit)));
         console.log("DropKit fees collected are:", dropKitFees);
 
-        assertEq(withdrawnAmount, bobAmount, "withdraw() return value mismatch");
-        assertEq(mockToken.balanceOf(address(BOB)), bobAmount, "Bob final token balance mismatch");
-        assertEq(dropKitFees, 0, "Admin fees should be 0 with no penalty");
+        assertEq(withdrawnAmount, bobAmount, "withdraw amount returned");
+        assertEq(mockToken.balanceOf(address(BOB)), bobAmount, "bob final token balance");
+        assertEq(dropKitFees, 0, "admin fees should be 0 with no penalty");
     }
 }
