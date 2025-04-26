@@ -17,22 +17,21 @@ import "forge-std/Test.sol";
 
 /// @title DropKit (Transparent Proxy Implementation)
 /// @author kelbels
-/// @notice Logic contract for an upgradeable airdrop system using the Transparent Proxy Pattern.
 /// @dev Handles ERC20 token drops with vesting. Creation and claim fees are paid in the native chain token.
-///      Must be deployed behind a TransparentUpgradeableProxy managed by a ProxyAdmin.
+///      Using the Transparent Proxy Pattern. Must be deployed behind a TransparentUpgradeableProxy managed by a ProxyAdmin.
 contract DropKit is Initializable, OwnableUpgradeable, IDropKit, DropShares {
     using SafeTransferLib for address;
 
     constructor() {
-        _disableInitializers();
+        // _disableInitializers();
     }
 
     function initialize(
         address initialOwner,
-        uint256 _initialMinEarlyExitPenalty,
-        uint256 _initialCreationPrice,
-        uint256 _initialActivationDeadline,
-        uint256 _initialAdminPenaltyFee
+        uint256 initialMinEarlyExitPenalty,
+        uint256 initialCreationPrice,
+        uint256 initialActivationDeadline,
+        uint256 initialAdminPenaltyFee
     ) public initializer {
         // Use the initializer modifier
         require(initialOwner != address(0), "ZeroAddress");
@@ -42,10 +41,10 @@ contract DropKit is Initializable, OwnableUpgradeable, IDropKit, DropShares {
         // IMPORTANT: Call the initializer for DropShares - adjust args
         __DropShares_init();
 
-        setMinEarlyExitPenalty(_initialMinEarlyExitPenalty);
-        setCreationPrice(_initialCreationPrice);
-        setActivationDeadline(_initialActivationDeadline);
-        setAdminPenaltyFee(_initialAdminPenaltyFee);
+        setMinEarlyExitPenalty(initialMinEarlyExitPenalty);
+        setCreationPrice(initialCreationPrice);
+        setActivationDeadline(initialActivationDeadline);
+        setAdminPenaltyFee(initialAdminPenaltyFee);
     }
 
     // ADMIN FUNCTIONS
@@ -76,6 +75,7 @@ contract DropKit is Initializable, OwnableUpgradeable, IDropKit, DropShares {
 
     function setAdminPenaltyFee(uint256 newAdminPenaltyFee) public override onlyOwner {
         adminPenaltyFee = newAdminPenaltyFee;
+        emit AdminPenaltyFeeeSet(newAdminPenaltyFee);
     }
 
     /// @notice Allows the owner to claim fees collected by the contract.
