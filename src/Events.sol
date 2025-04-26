@@ -6,7 +6,7 @@ abstract contract Events {
     event MinEarlyExitPenaltySet(uint256 newMinEarlyExitPenalty);
     event CreationPriceSet(uint256 newCreationPrice);
     event ActivationDeadlineSet(uint256 newActivationDeadline);
-    event AdminPenaltyFeeeSet(newAdminPenaltyFee);
+    event AdminPenaltyFeeSet(uint256 newAdminPenaltyFee);
     event AdminFeesWithdrawn(uint256 dropID, address recipient, address tokenAddr, uint256 feesToWithdraw);
     event DropCreated(
         uint256 indexed dropID,

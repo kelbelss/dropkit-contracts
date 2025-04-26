@@ -75,7 +75,7 @@ contract DropKit is Initializable, OwnableUpgradeable, IDropKit, DropShares {
 
     function setAdminPenaltyFee(uint256 newAdminPenaltyFee) public override onlyOwner {
         adminPenaltyFee = newAdminPenaltyFee;
-        emit AdminPenaltyFeeeSet(newAdminPenaltyFee);
+        emit AdminPenaltyFeeSet(newAdminPenaltyFee);
     }
 
     /// @notice Allows the owner to claim fees collected by the contract.
