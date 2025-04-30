@@ -33,12 +33,10 @@ contract DropKit is Initializable, OwnableUpgradeable, IDropKit, DropShares {
         uint256 initialActivationDeadline,
         uint256 initialAdminPenaltyFee
     ) public initializer {
-        // Use the initializer modifier
         require(initialOwner != address(0), "ZeroAddress");
 
         // --- Initialize Inherited Contracts ---
         __Ownable_init(initialOwner);
-        // IMPORTANT: Call the initializer for DropShares - adjust args
         __DropShares_init();
 
         setMinEarlyExitPenalty(initialMinEarlyExitPenalty);
@@ -118,7 +116,6 @@ contract DropKit is Initializable, OwnableUpgradeable, IDropKit, DropShares {
         // assume the dropper is using their own token
 
         // TODO implement feature where droppers can create a token
-        // TODO maybe check if msg.value is MON?
 
         // Require payment for drop creation
         require(msg.value == creationPrice, InsufficientPayment());
