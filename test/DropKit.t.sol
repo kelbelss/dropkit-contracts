@@ -5,7 +5,7 @@ import {Test, console} from "forge-std/Test.sol";
 
 import {BaseTest} from "./base/BaseTest.t.sol";
 import {DropKit} from "../src/DropKit.sol";
-import {Storage, Config} from "../src/Storage.sol";
+import {Storage, DropConfig, DropVars, Recipient} from "../src/Storage.sol";
 import {MockToken} from "./MockERC20.sol";
 
 contract TestDropKit is BaseTest {
@@ -22,36 +22,61 @@ contract TestDropKit is BaseTest {
         vm.startPrank(DROP_CREATOR);
 
         // Approve dropkit contract to transfer creator tokens
-        mockToken.approve(address(dropKit), totalDropAmount);
+        mockToken.approve(address(iDropKit), totalDropAmount);
 
         // Create a drop
-        dropID = dropKit.createDrop{value: 2 ether}(
-            address(mockToken), merkleRoot, totalDropAmount, 2e17, defaultStartTime, 30 days
+        dropID = iDropKit.createDrop{value: 2 ether}(
+            address(mockToken),
+            tokenName,
+            tokenSymbol,
+            merkleRoot,
+            earlyExitPenalty,
+            defaultStartTime,
+            defaultDuration,
+            totalDropAmount
         );
 
         vm.stopPrank();
 
         // Check drop details
-        (address token, bytes32 root, uint256 total, uint256 penalty, uint256 start, uint256 duration) =
-            dropKit.drops(dropID);
+        (
+            address creator,
+            address token,
+            string memory name,
+            string memory symbol,
+            bytes32 root,
+            uint256 penalty,
+            uint256 start,
+            uint256 duration
+        ) = DropKit(address(proxy)).dropConfigs(dropID);
 
+        assertEq(creator, DROP_CREATOR);
         assertEq(token, address(mockToken));
+        assertEq(name, tokenName);
+        assertEq(symbol, tokenSymbol);
         assertEq(root, merkleRoot);
-        assertEq(total, totalDropAmount);
-        assertEq(penalty, 2e17);
+        assertEq(penalty, earlyExitPenalty);
         assertEq(start, defaultStartTime);
-        assertEq(duration, 30 days);
+        assertEq(duration, defaultDuration);
 
-        assertEq(mockToken.balanceOf(address(dropKit)), totalDropAmount);
+        assertEq(mockToken.balanceOf(address(iDropKit)), totalDropAmount);
     }
 
     function test_DropKit_activateDrop() public {
         // Create a drop
         vm.startPrank(DROP_CREATOR);
         // Approve dropkit contract to transfer creator tokens
-        mockToken.approve(address(dropKit), totalDropAmount);
-        dropID = dropKit.createDrop{value: 2 ether}(
-            address(mockToken), merkleRoot, totalDropAmount, 2e17, defaultStartTime, 30 days
+        mockToken.approve(address(iDropKit), totalDropAmount);
+        // Create a drop
+        dropID = iDropKit.createDrop{value: 2 ether}(
+            address(mockToken),
+            tokenName,
+            tokenSymbol,
+            merkleRoot,
+            earlyExitPenalty,
+            defaultStartTime,
+            defaultDuration,
+            totalDropAmount
         );
         vm.stopPrank();
         vm.warp(defaultStartTime);
@@ -61,13 +86,12 @@ contract TestDropKit is BaseTest {
         bytes32[] memory proof = getMerkleProof(address(BOB), bobAmount);
 
         // activate drop
-        dropKit.activateDrop(dropID, bobAmount, proof);
+        iDropKit.activateDrop(dropID, bobAmount, proof);
         vm.stopPrank();
 
         // Check recipient details are set
         (uint256 totalAmountDropped, uint256 totalAmountRemaining, bool hasActivatedDrop) =
-            dropKit.recipients(dropID, address(BOB));
-
+            DropKit(address(proxy)).recipients(dropID, address(BOB));
         assertEq(totalAmountDropped, bobAmount);
         assertEq(totalAmountRemaining, bobAmount);
         assertEq(hasActivatedDrop, true);
@@ -77,9 +101,17 @@ contract TestDropKit is BaseTest {
         // Create a drop
         vm.startPrank(DROP_CREATOR);
         // Approve dropkit contract to transfer creator tokens
-        mockToken.approve(address(dropKit), totalDropAmount);
-        dropID = dropKit.createDrop{value: 2 ether}(
-            address(mockToken), merkleRoot, totalDropAmount, 2e17, defaultStartTime, 100 days
+        mockToken.approve(address(iDropKit), totalDropAmount);
+        // Create a drop
+        dropID = iDropKit.createDrop{value: 2 ether}(
+            address(mockToken),
+            tokenName,
+            tokenSymbol,
+            merkleRoot,
+            earlyExitPenalty,
+            defaultStartTime,
+            100 days,
+            totalDropAmount
         );
         vm.stopPrank();
         vm.warp(defaultStartTime);
@@ -89,25 +121,34 @@ contract TestDropKit is BaseTest {
         bytes32[] memory proof = getMerkleProof(address(BOB), bobAmount);
 
         // activate drop
-        dropKit.activateDrop(dropID, bobAmount, proof);
+        iDropKit.activateDrop(dropID, bobAmount, proof);
         // vm.stopPrank();
 
-        vm.warp(defaultStartTime + 80 days);
+        vm.warp(defaultStartTime + 100 days);
         // total is 1000e18, bob has 300e18
 
         // withdraw airdrop tokens
-        dropKit.withdrawAirdropTokens(dropID, bobAmount);
+        uint256 withdrawnAmount = iDropKit.withdraw(dropID, bobAmount);
 
         vm.stopPrank();
 
         // Check recipient details
         (uint256 totalAmountDropped, uint256 totalAmountRemaining, bool hasActivatedDrop) =
-            dropKit.recipients(dropID, address(BOB));
+            DropKit(address(proxy)).recipients(dropID, address(BOB));
 
         assertEq(totalAmountDropped, bobAmount);
         assertEq(totalAmountRemaining, 0);
-        console.log("Bob's balance is: ", mockToken.balanceOf(address(BOB)));
         assertEq(hasActivatedDrop, true);
-        console.log("dropkit balance", mockToken.balanceOf(address(dropKit)));
+
+        (,,, uint256 dropKitFees) = DropKit(address(proxy)).dropVars(dropID);
+
+        console.log("DropKit fees collected are:", dropKitFees);
+        console.log("Bob's token balance is: ", mockToken.balanceOf(address(BOB)));
+        console.log("Proxy's token balance", mockToken.balanceOf(address(iDropKit)));
+        console.log("DropKit fees collected are:", dropKitFees);
+
+        assertEq(withdrawnAmount, bobAmount, "withdraw amount returned");
+        assertEq(mockToken.balanceOf(address(BOB)), bobAmount, "bob final token balance");
+        assertEq(dropKitFees, 0, "admin fees should be 0 with no penalty");
     }
 }

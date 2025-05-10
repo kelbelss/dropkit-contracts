@@ -1,69 +1,128 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.28;
 
-import {Test, console} from "forge-std/Test.sol";
-import {Storage} from "./Storage.sol";
-import {Config, Recipient} from "./Types.sol";
-import {IDropKit} from "./interfaces/IDropKit.sol";
-import {Ownable} from "openzeppelin/contracts/access/Ownable.sol";
+import {Initializable} from "openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import {OwnableUpgradeable} from "openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {MerkleProofLib} from "solady/utils/MerkleProofLib.sol";
 
-/// @title DropKit
+import {DropShares} from "./DropShares.sol";
+import {DropConfig, DropVars, Recipient} from "./Types.sol";
+import {IDropKit} from "./interfaces/IDropKit.sol";
+
+// TODO remove
+import "forge-std/Test.sol";
+
+/// @title DropKit (Transparent Proxy Implementation)
 /// @author kelbels
-/// @notice A contract for creating and managing token airdrops with vesting and early withdrawal penalties.
-/// @dev This contract allows users (droppers) to create airdrops of ERC20 tokens.  Recipients can claim their
-/// tokens according to a vesting schedule.  Early withdrawals are possible but incur a penalty.
-contract DropKit is IDropKit, Storage, Ownable {
+/// @dev Handles ERC20 token drops with vesting. Creation and claim fees are paid in the native chain token.
+///      Using the Transparent Proxy Pattern. Must be deployed behind a TransparentUpgradeableProxy managed by a ProxyAdmin.
+contract DropKit is Initializable, OwnableUpgradeable, IDropKit, DropShares {
     using SafeTransferLib for address;
 
-    constructor() Ownable(msg.sender) {}
+    constructor() {
+        // _disableInitializers();
+    }
+
+    function initialize(
+        address initialOwner,
+        uint256 initialMinEarlyExitPenalty,
+        uint256 initialCreationPrice,
+        uint256 initialActivationDeadline,
+        uint256 initialAdminPenaltyFee
+    ) public initializer {
+        require(initialOwner != address(0), "ZeroAddress");
+
+        // --- Initialize Inherited Contracts ---
+        __Ownable_init(initialOwner);
+        __DropShares_init();
+
+        setMinEarlyExitPenalty(initialMinEarlyExitPenalty);
+        setCreationPrice(initialCreationPrice);
+        setActivationDeadline(initialActivationDeadline);
+        setAdminPenaltyFee(initialAdminPenaltyFee);
+    }
 
     // ADMIN FUNCTIONS
 
     /// @notice Sets the minimum allowed early exit penalty.
     /// @dev Only callable by the contract owner.
     /// @param newMinEarlyExitPenalty The new minimum early exit penalty (scaled by 1e18).
-    function setMinEarlyExitPenalty(uint256 newMinEarlyExitPenalty) public onlyOwner {
+    function setMinEarlyExitPenalty(uint256 newMinEarlyExitPenalty) public override onlyOwner {
         minEarlyExitPenalty = newMinEarlyExitPenalty;
+        emit MinEarlyExitPenaltySet(newMinEarlyExitPenalty);
     }
 
     /// @notice Sets the creation price for airdrops.
     /// @dev Only callable by the contract owner.  This is paid in MON.
     /// @param newCreationPrice The new creation price for airdrops.
-    function setCreationPrice(uint256 newCreationPrice) public onlyOwner {
+    function setCreationPrice(uint256 newCreationPrice) public override onlyOwner {
         creationPrice = newCreationPrice;
+        emit CreationPriceSet(newCreationPrice);
     }
 
     /// @notice Sets the global claim deadline for airdrops.
     /// @dev Only callable by the contract owner.  This is a duration (in seconds) after the airdrop's start timestamp.
     /// @param newActivationDeadline The new claim deadline duration (in seconds).
-    function setActivationDeadline(uint256 newActivationDeadline) public onlyOwner {
+    function setActivationDeadline(uint256 newActivationDeadline) public override onlyOwner {
         activationDeadline = newActivationDeadline;
+        emit ActivationDeadlineSet(newActivationDeadline);
+    }
+
+    function setAdminPenaltyFee(uint256 newAdminPenaltyFee) public override onlyOwner {
+        adminPenaltyFee = newAdminPenaltyFee;
+        emit AdminPenaltyFeeSet(newAdminPenaltyFee);
     }
 
     /// @notice Allows the owner to claim fees collected by the contract.
     /// @dev Only callable by the contract owner.
-    function claimFees(address token) public payable onlyOwner {
-        // TODO: MON - needs to account for creationFees and 10% penalty fees?
+    function withdrawAdminPenaltyFees(uint256 dropID, address recipient) public override onlyOwner {
+        // TODO: drop specific - needs to account for 10% penalty fees?
+
+        require(recipient != address(0), "ZeroAddress"); // TODO
+        DropVars storage vars = dropVars[dropID];
+        address tokenAddr = dropConfigs[dropID].token;
+
+        uint256 feesToWithdraw = vars.dropKitFees;
+
+        require(feesToWithdraw > 0, "NoFeesToWithdraw");
+
+        vars.dropKitFees = 0;
+
+        tokenAddr.safeTransfer(recipient, feesToWithdraw);
+
+        emit AdminFeesWithdrawn(dropID, recipient, tokenAddr, feesToWithdraw);
+    }
+
+    function withdrawCreationFees(address payable recipient) public payable onlyOwner {
+        // TODO: MON - 2 mon per drop created
+        require(recipient != address(0), "ZeroAddress"); // TODO
     }
 
     // DROPPER FUNCTIONS
 
     function createDrop(
         address token,
+        string memory tokenName,
+        string memory tokenSymbol,
         bytes32 merkleRoot,
-        uint256 totalAmount,
         uint256 earlyExitPenalty,
         uint256 startTimestamp,
-        uint256 vestingDuration
+        uint256 vestingDuration,
+        uint256 totalAmountToDrop
     ) public payable returns (uint256 dropID) {
         // assume the dropper is using their own token
 
-        //TODO: maybe check if msg.value is MON?
+        // TODO implement feature where droppers can create a token
 
         // Require payment for drop creation
         require(msg.value == creationPrice, InsufficientPayment());
+
+        // Require token decimals to be 18 - call decimal function on IERC20
+        // TODO revert in createDrop if token decimals != 18. Only 18 decimals supported
+        // require(decimals == 18, MustHave18Decimals());
 
         // Check that the start date is in the future
         require(startTimestamp >= block.timestamp, InvalidStartDate());
@@ -73,25 +132,35 @@ contract DropKit is IDropKit, Storage, Ownable {
         require(earlyExitPenalty <= MAX_EARLY_EXIT_PENALTY_ALLOWED, EarlyExitPenaltyTooHigh());
 
         // transfer token to this contract
-        token.safeTransferFrom(msg.sender, address(this), totalAmount);
+        token.safeTransferFrom(msg.sender, address(this), totalAmountToDrop);
 
         // create a new drop
-        Config memory config = Config({
+        DropConfig memory config = DropConfig({
+            dropCreator: msg.sender,
             token: token,
+            tokenName: tokenName,
+            tokenSymbol: tokenSymbol,
             merkleRoot: merkleRoot,
-            totalAmount: totalAmount,
             earlyExitPenalty: earlyExitPenalty,
             startTimestamp: startTimestamp,
             vestingDuration: vestingDuration
         });
 
+        DropVars memory vars = DropVars({
+            totalAssets: totalAmountToDrop,
+            totalShares: totalAmountToDrop,
+            totalSharesActivated: 0,
+            dropKitFees: 0
+        });
+
         // drop ID settings
         dropID = ++dropCount;
-        drops[dropID] = config;
-        dropCreator[dropID] = msg.sender;
+        dropConfigs[dropID] = config;
+        dropVars[dropID] = vars;
 
         // emit event
-        emit DropCreated(dropID, token, totalAmount, earlyExitPenalty, startTimestamp, vestingDuration);
+        // TODO: update event
+        emit DropCreated(dropID, token, totalAmountToDrop, earlyExitPenalty, startTimestamp, vestingDuration);
     }
 
     // RECIPIENT FUNCTIONS
@@ -103,7 +172,7 @@ contract DropKit is IDropKit, Storage, Ownable {
     /// @param merkleProof The Merkle proof demonstrating the recipient's eligibility.
     /// @dev Emits a `DropActivated` event.
     function activateDrop(uint256 dropID, uint256 amount, bytes32[] memory merkleProof) public {
-        Config memory config = drops[dropID];
+        DropConfig memory config = dropConfigs[dropID];
         // storage for changing state?
         Recipient storage recipient = recipients[dropID][msg.sender];
 
@@ -123,8 +192,9 @@ contract DropKit is IDropKit, Storage, Ownable {
 
         // update the activated status and amount mapping
         recipient.hasActivatedDrop = true;
-        recipient.totalAmountDropped = amount;
-        recipient.totalAmountRemaining = amount;
+        recipient.sharesDropped = amount;
+        recipient.sharesRemaining = amount;
+        dropVars[dropID].totalSharesActivated += amount;
 
         emit DropActivated(dropID, config.token, msg.sender, amount);
     }
@@ -137,121 +207,127 @@ contract DropKit is IDropKit, Storage, Ownable {
         return _verifyMerkleProof(dropID, recipient, amount, merkleProof);
     }
 
+    // Check if the recipient is in the merkle tree
     function _verifyMerkleProof(uint256 dropID, address recipient, uint256 amount, bytes32[] memory merkleProof)
         internal
         view
         returns (bool)
     {
-        // Check if the recipient is in the merkle tree
         bytes32 leaf = keccak256(abi.encodePacked(recipient, amount));
-        return MerkleProofLib.verify(merkleProof, drops[dropID].merkleRoot, leaf);
+        return MerkleProofLib.verify(merkleProof, dropConfigs[dropID].merkleRoot, leaf);
     }
 
-    /// @notice Allows a recipient to withdraw airdropped tokens.
+    /// @notice Allows a recipient to withdraw airdrop.
     /// @dev Calculates vested and unvested amounts, applies penalties for early withdrawals of unvested tokens, and transfers the tokens.
     /// @param dropID The ID of the airdrop to withdraw from.
-    /// @param amountRequested The amount of tokens the recipient wants to withdraw.
+    /// @param sharesRequested The amount of shares the recipient wants to convert to withdraw.
     /// @dev Emits an `AirdropTokensWithdrawn` event.
-    function withdrawAirdropTokens(uint256 dropID, uint256 amountRequested) public {
-        // TODO: calculate penalty amount and add to this function
-        Config memory config = drops[dropID];
-        // storage for changing state? TODO: who is calling this function if its internal?
+    function withdraw(uint256 dropID, uint256 sharesRequested) public returns (uint256 assetsWithdrawn) {
+        DropConfig memory config = dropConfigs[dropID];
         Recipient storage recipient = recipients[dropID][msg.sender];
+        DropVars storage vars = dropVars[dropID];
 
         // Check if the recipient has not activated or already withdrawn
         require(recipient.hasActivatedDrop, NotActivated());
-        require(recipient.totalAmountRemaining != 0, AlreadyWithdrawn());
-
-        uint256 recipientsAmountRemaining = recipient.totalAmountRemaining;
-
+        require(recipient.sharesRemaining != 0, AlreadyWithdrawn());
         // Check if the recipient has enough funds owed
-        require(amountRequested <= recipientsAmountRemaining, InsufficientFunds());
+        require(sharesRequested <= recipient.sharesRemaining, InsufficientFunds());
 
-        uint256 amountOut = _handleWithdrawals(dropID, amountRequested);
+        // TODO this needs to be converted to the asset value, not the share value
+        uint256 sharesWithdrawn = _calculateSharesToWithdraw(dropID, msg.sender, sharesRequested);
 
-        recipient.totalAmountRemaining -= amountOut;
+        assetsWithdrawn = convertToAsset(dropID, sharesWithdrawn);
+
+        recipient.sharesRemaining -= sharesRequested;
+        vars.totalAssets -= assetsWithdrawn;
+        vars.totalShares -= sharesRequested;
 
         // transfer tokens to the recipient
-        config.token.safeTransfer(msg.sender, amountOut);
-
-        emit AirdropTokensWithdrawn(dropID, msg.sender, amountOut);
+        config.token.safeTransfer(msg.sender, assetsWithdrawn);
+        emit AirdropTokensWithdrawn(dropID, msg.sender, sharesWithdrawn); // TODO update event emitted
     }
 
     // INTERNAL FUNCTIONS
 
     /// @notice Internal function to handle withdrawal logic, including penalty calculation.
     /// @param dropID The ID of the airdrop.
-    /// @param amountRequested The amount the user wants to withdraw.
-    /// @return amountOut The actual amount withdrawn after penalties are applied.
-    function _handleWithdrawals(uint256 dropID, uint256 amountRequested) internal returns (uint256 amountOut) {
-        Recipient storage recipient = recipients[dropID][msg.sender];
+    /// @param sharesRequested The amount the user wants to withdraw.
+    /// @return sharesOut The actual amount withdrawn after penalties are applied.
+    function _calculateSharesToWithdraw(uint256 dropID, address recipientAddr, uint256 sharesRequested)
+        internal
+        returns (uint256 sharesOut)
+    {
+        Recipient storage recipient = recipients[dropID][recipientAddr];
+        DropVars storage vars = dropVars[dropID];
 
-        uint256 vestedAmount = _getVestedAmount(dropID, recipient.totalAmountDropped);
+        uint256 totalVestedShares = _getVestedShares(dropID, recipient.sharesDropped);
 
         // users remaining balance - unvested balance
-        uint256 vestedBalanceAvailable = recipient.totalAmountRemaining - (recipient.totalAmountDropped - vestedAmount);
+        uint256 vestedBalanceAvailable = recipient.sharesRemaining - (recipient.sharesDropped - totalVestedShares);
 
         // if recipient is withdrawing less than/equal to the balance that has vested, ie. no penalty
-        if (amountRequested <= vestedBalanceAvailable) {
-            return amountRequested;
+        if (sharesRequested <= vestedBalanceAvailable) {
+            return sharesRequested;
         }
 
         // if recipient is withdrawing more than the balance that has vested
-        uint256 unvestedWithdrawalAmount = amountRequested - vestedBalanceAvailable;
+        uint256 unvestedSharesRequested = sharesRequested - vestedBalanceAvailable;
 
-        uint256 penalty = _getPenalty(dropID, unvestedWithdrawalAmount);
+        uint256 penaltyShares = _getPenaltyShares(dropID, unvestedSharesRequested);
 
-        recipient.totalAmountRemaining -= penalty;
+        uint256 adminFeeShares = (penaltyShares * adminPenaltyFee) / SCALE;
+        uint256 adminFeeAssets = convertToAsset(dropID, adminFeeShares);
 
-        amountOut = vestedBalanceAvailable + unvestedWithdrawalAmount - penalty;
+        vars.dropKitFees += adminFeeAssets;
+        vars.totalAssets -= adminFeeAssets;
+
+        sharesOut = vestedBalanceAvailable + (unvestedSharesRequested - penaltyShares);
+
+        // make sure amount out is not too much
+        assert(sharesOut <= sharesRequested);
     }
 
     /// @notice Calculates the penalty for withdrawing unvested tokens.
     /// @param dropID The ID of the airdrop.
-    /// @param unvestedWithdrawalAmount The amount of unvested tokens being withdrawn.
-    /// @return penalty The calculated penalty (scaled by 1e18).
-    function _getPenalty(uint256 dropID, uint256 unvestedWithdrawalAmount) internal view returns (uint256 penalty) {
+    /// @param unvestedSharesRequested The amount of unvested tokens being withdrawn.
+    /// @return penaltyShares The calculated penalty (scaled by 1e18).
+    function _getPenaltyShares(uint256 dropID, uint256 unvestedSharesRequested)
+        internal
+        view
+        returns (uint256 penaltyShares)
+    {
         // applies to claiming tokens when some are still unvested
-        penalty = (unvestedWithdrawalAmount * drops[dropID].earlyExitPenalty) / SCALE;
+        penaltyShares = (unvestedSharesRequested * dropConfigs[dropID].earlyExitPenalty) / SCALE;
     }
 
-    /// @notice Calculates the amount of tokens that have vested for a recipient.
-    /// @param dropID The ID of the airdrop.
-    /// @param userAmount The total amount of tokens the user is entitled to.
-    /// @return vestedAmount The amount of tokens that have vested.
-    function _getVestedAmount(uint256 dropID, uint256 userAmount) internal view returns (uint256 vestedAmount) {
-        Config memory config = drops[dropID];
+    function _getVestedShares(uint256 dropID, uint256 totalUserShares) internal view returns (uint256 vestedShares) {
+        DropConfig memory config = dropConfigs[dropID];
 
-        uint256 vestedTime = _getVestedTime(dropID);
+        if (config.vestingDuration == 0) {
+            return totalUserShares;
+        }
 
-        // percentage calculation for vested portion
-        uint256 vestedPortion = (vestedTime * SCALE) / config.vestingDuration;
+        // calculate time since the start of the vesting duration
+        uint256 timeSinceStart = 0;
+        if (block.timestamp >= config.startTimestamp) {
+            timeSinceStart = block.timestamp - config.startTimestamp;
+        }
 
-        // make sure the vested portion doesn't go over 100%
-        if (vestedPortion > SCALE) {
-            vestedPortion = SCALE;
+        // has not started
+        if (timeSinceStart == 0) {
+            return 0;
+        }
+
+        // fully vested
+        if (timeSinceStart >= config.vestingDuration) {
+            return totalUserShares;
         }
 
         // calculate the vested amount with percentage
-        vestedAmount = (userAmount * vestedPortion) / SCALE;
+        vestedShares = (totalUserShares * timeSinceStart) / config.vestingDuration;
+
+        // TODO test new logic update
     }
 
-    /// @notice Calculates the amount of time that has vested for a given airdrop.
-    /// @param dropID The ID of the airdrop.
-    /// @return vestedTime The amount of time (in seconds) that has vested.
-    function _getVestedTime(uint256 dropID) internal view returns (uint256 vestedTime) {
-        Config memory config = drops[dropID];
-
-        uint256 fullVestPeriod = config.startTimestamp + config.vestingDuration;
-
-        // vesting period complete
-        if (block.timestamp >= fullVestPeriod) {
-            return config.vestingDuration;
-        }
-
-        // partially vested - time since the start
-        vestedTime = block.timestamp - config.startTimestamp;
-    }
-
-    // TODO: track balances
+    uint256[50] private __gap;
 }

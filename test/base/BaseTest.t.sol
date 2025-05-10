@@ -4,11 +4,17 @@ pragma solidity 0.8.28;
 import {Test, console} from "forge-std/Test.sol";
 import {Merkle} from "murky/Merkle.sol";
 import {DropKit} from "src/DropKit.sol";
-import {Storage, Config} from "src/Storage.sol";
+import {TransparentUpgradeableProxy} from "openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {ProxyAdmin} from "openzeppelin/contracts/proxy/transparent/ProxyAdmin.sol";
+import {Storage, DropConfig, DropVars, Recipient} from "src/Storage.sol";
+import {IDropKit} from "../../src/interfaces/IDropKit.sol";
 
 contract BaseTest is Test {
-    DropKit dropKit;
-    Merkle merkle;
+    DropKit internal dropKit;
+    IDropKit internal iDropKit;
+    Merkle internal merkle;
+    ProxyAdmin internal proxyAdmin;
+    TransparentUpgradeableProxy internal proxy;
 
     // Accounts
     address GOV = makeAddr("GOV");
@@ -26,24 +32,46 @@ contract BaseTest is Test {
     bytes32[] hashedMerkleItems;
     bytes32 merkleRoot;
 
+    string tokenName = "TestToken";
+    string tokenSymbol = "TT";
     uint256 defaultActivationDeadline = 365 days;
     uint256 defaultStartTime = block.timestamp + 1 days;
+    uint256 defaultDuration = 30 days;
+    uint256 earlyExitPenalty = 2e17; // 20%
 
     function setUp() public virtual {
         merkle = new Merkle();
-
-        // Deploy and set up GOV functions
-        vm.startPrank(GOV);
+        // deploy DropKit implementation
         dropKit = new DropKit();
+        // deploy ProxyAdmin
+        proxyAdmin = new ProxyAdmin(address(this));
+
+        vm.startPrank(GOV);
+
+        // encode initializer call for DropKit
+        bytes memory initData = abi.encodeWithSelector(
+            IDropKit.initialize.selector,
+            GOV,
+            0.1e17, // minEarlyExitPenalty
+            2 ether, // creationPrice
+            365 days, // activationDeadline
+            0.1e17 // adminPenaltyFee
+        );
+
+        // deploy the TransparentUpgradeableProxy
+        proxy = new TransparentUpgradeableProxy(address(dropKit), address(proxyAdmin), initData);
+
+        // interact with the proxy via the interface
+        iDropKit = IDropKit(address(proxy));
+
+        // Give some ETH to Alice to simulate usage
         vm.deal(DROP_CREATOR, 10 ether);
-        dropKit.setActivationDeadline(defaultActivationDeadline);
-        dropKit.setCreationPrice(2 ether);
-        dropKit.setMinEarlyExitPenalty(1e17);
-        vm.stopPrank();
 
         // Build Merkle proof and claim data
         _buildHashedMerkleItems();
         _buildMerkleRootFromHashedMerkleItems();
+
+        vm.stopPrank();
     }
 
     function _buildHashedMerkleItems() internal {
