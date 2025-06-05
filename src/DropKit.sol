@@ -12,9 +12,6 @@ import {DropShares} from "./DropShares.sol";
 import {DropConfig, DropVars, Recipient} from "./Types.sol";
 import {IDropKit} from "./interfaces/IDropKit.sol";
 
-// TODO remove
-import "forge-std/Test.sol";
-
 /// @title DropKit (Transparent Proxy Implementation)
 /// @author kelbels
 /// @dev Handles ERC20 token drops with vesting. Creation and claim fees are paid in the native chain token.
@@ -23,7 +20,9 @@ contract DropKit is Initializable, OwnableUpgradeable, IDropKit, DropShares {
     using SafeTransferLib for address;
 
     constructor() {
-        // _disableInitializers();
+        // Prevent the implementation contract from being initialized
+        // outside of the proxy context.
+        _disableInitializers();
     }
 
     function initialize(
