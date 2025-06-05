@@ -5,7 +5,7 @@ import {Initializable} from "openzeppelin/contracts-upgradeable/proxy/utils/Init
 import {OwnableUpgradeable} from "openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 import {SafeTransferLib} from "solady/utils/SafeTransferLib.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC20} from "openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {MerkleProofLib} from "solady/utils/MerkleProofLib.sol";
 
 import {DropShares} from "./DropShares.sol";
@@ -114,7 +114,6 @@ contract DropKit is Initializable, OwnableUpgradeable, IDropKit, DropShares {
         uint256 totalAmountToDrop
     ) public payable returns (uint256 dropID) {
         // assume the dropper is using their own token
-
         // TODO implement feature where droppers can create a token
 
         // Require payment for drop creation

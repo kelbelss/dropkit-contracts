@@ -5,7 +5,7 @@ pragma solidity 0.8.28;
 struct DropConfig {
     address dropCreator;
     address token;
-    string tokenName; // bottom
+    string tokenName;
     string tokenSymbol;
     bytes32 merkleRoot;
     uint256 earlyExitPenalty;
